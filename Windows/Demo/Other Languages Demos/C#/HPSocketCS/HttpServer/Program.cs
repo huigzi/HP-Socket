@@ -28,7 +28,10 @@ namespace HttpServerDemo
                 ushort port = 8081;
                 Console.Title = port.ToString();
                 // http server
-                new MyHttpServer().Run("0.0.0.0", port);
+                // new MyHttpServer().Run("0.0.0.0", port);
+
+                // https server
+                new MyHttpsServer().Run("0.0.0.0", port);
                 do
                 {
                     Console.WriteLine("输入quit退出!");

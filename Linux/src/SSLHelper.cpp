@@ -42,9 +42,9 @@ CSSLInitializer CSSLInitializer::sm_instance;
 const DWORD CSSLSessionPool::DEFAULT_ITEM_CAPACITY		= CItemPool::DEFAULT_ITEM_CAPACITY;
 const DWORD CSSLSessionPool::DEFAULT_ITEM_POOL_SIZE		= CItemPool::DEFAULT_POOL_SIZE;
 const DWORD CSSLSessionPool::DEFAULT_ITEM_POOL_HOLD		= CItemPool::DEFAULT_POOL_HOLD;
-const DWORD CSSLSessionPool::DEFAULT_SESSION_LOCK_TIME	= 10 * 1000;
-const DWORD CSSLSessionPool::DEFAULT_SESSION_POOL_SIZE	= 150;
-const DWORD CSSLSessionPool::DEFAULT_SESSION_POOL_HOLD	= 600;
+const DWORD CSSLSessionPool::DEFAULT_SESSION_LOCK_TIME	= DEFAULT_OBJECT_CACHE_LOCK_TIME;
+const DWORD CSSLSessionPool::DEFAULT_SESSION_POOL_SIZE	= DEFAULT_OBJECT_CACHE_POOL_SIZE;
+const DWORD CSSLSessionPool::DEFAULT_SESSION_POOL_HOLD	= DEFAULT_OBJECT_CACHE_POOL_HOLD;
 
 CSSLInitializer::CSSLInitializer()
 {
@@ -356,7 +356,7 @@ void CSSLContext::SetServerNameCallback(Fn_SNI_ServerNameCallback fn)
 	VERIFY(SSL_CTX_set_tlsext_servername_arg(m_sslCtx, this));
 }
 
-int CALLBACK CSSLContext::InternalServerNameCallback(SSL* ssl, int* ad, void* arg)
+int CSSLContext::InternalServerNameCallback(SSL* ssl, int* ad, void* arg)
 {
 	USES_CONVERSION;
 
@@ -412,7 +412,10 @@ BOOL CSSLSession::WriteRecvChannel(const BYTE* pData, int iLength)
 	if(bytes > 0)
 		ASSERT(bytes == iLength);
 	else if(!BIO_should_retry(m_bioRecv))
+	{
+		::SetLastError(ERROR_INVALID_DATA);
 		isOK = FALSE;
+	}
 
 	return isOK;
 }
@@ -490,7 +493,10 @@ BOOL CSSLSession::ReadSendChannel()
 	else if(BIO_should_retry(m_bioSend))
 		m_bufSend.len = 0;
 	else
+	{
+		::SetLastError(ERROR_INVALID_DATA);
 		isOK = FALSE;
+	}
 
 	return isOK;
 }
@@ -589,10 +595,9 @@ inline BOOL CSSLSession::IsFatalError(int iBytes)
 	}
 
 	if(iErrorCode == SSL_ERROR_SYSCALL && i == 1)
-	{
-		//ERR_clear_error();
 		return FALSE;
-	}
+
+	::SetLastError(ERROR_CONNRESET);
 
 	return TRUE;
 }
@@ -613,7 +618,7 @@ CSSLSession* CSSLSessionPool::PickFreeSession(LPCSTR lpszHostName)
 		}
 	}
 
-	if(!pSession) pSession = new CSSLSession(m_itPool);
+	if(!pSession) pSession = CSSLSession::Construct(m_itPool);
 
 	ASSERT(pSession);
 	return pSession->Renew(m_sslCtx, lpszHostName);
@@ -623,37 +628,22 @@ void CSSLSessionPool::PutFreeSession(CSSLSession* pSession)
 {
 	if(pSession->Reset())
 	{
-		if(!m_lsFreeSession.TryPut(pSession))
-		{
-			m_lsGCSession.PushBack(pSession);
+		ReleaseGCSession();
 
-			if(m_lsGCSession.Size() > m_dwSessionPoolSize)
-				ReleaseGCSession();
-		}
+		if(!m_lsFreeSession.TryPut(pSession))
+			m_lsGCSession.PushBack(pSession);
 	}
 }
 
 void CSSLSessionPool::ReleaseGCSession(BOOL bForce)
 {
-	CSSLSession* pSession	= nullptr;
-	DWORD now				= ::TimeGetTime();
-
-	while(m_lsGCSession.PopFront(&pSession))
-	{
-		if(bForce || (int)(now - pSession->GetFreeTime()) >= (int)m_dwSessionLockTime)
-			delete pSession;
-		else
-		{
-			m_lsGCSession.PushBack(pSession);
-			break;
-		}
-	}
+	::ReleaseGCObj(m_lsGCSession, m_dwSessionLockTime, bForce);
 }
 
 void CSSLSessionPool::Prepare()
 {
 	m_itPool.Prepare();
-	m_lsFreeSession.Reset(m_dwSessionPoolHold);
+	m_lsFreeSession.Reset(m_dwSessionPoolSize);
 }
 
 void CSSLSessionPool::Clear()
@@ -661,7 +651,7 @@ void CSSLSessionPool::Clear()
 	CSSLSession* pSession = nullptr;
 
 	while(m_lsFreeSession.TryGet(&pSession))
-		delete pSession;
+		CSSLSession::Destruct(pSession);
 
 	VERIFY(m_lsFreeSession.IsEmpty());
 	m_lsFreeSession.Reset();

@@ -304,6 +304,15 @@ namespace HPSocketCS
             return HttpSdk.HP_HttpServer_Release(pServer, connId);
         }
 
+        /// <summary>
+        /// 启动 HTTP 通信, 当通信组件设置为非自动启动 HTTP 通信时，需要调用本方法启动 HTTP 通信
+        /// </summary>
+        /// <param name="connId"></param>
+        /// <returns></returns>
+        public bool StartHttp(IntPtr connId)
+        {
+            return HttpSdk.HP_HttpServer_StartHttp(pServer, connId);
+        }
 
         /******************************************************************************/
         /***************************** Server 属性访问方法 *****************************/
@@ -661,6 +670,20 @@ namespace HPSocketCS
             return list;
         }
 
+        /// <summary>
+        /// 获取或设置 HTTP 启动方式,默认为true
+        /// </summary>
+        public bool HttpAutoStart
+        {
+            get
+            {
+                return HttpSdk.HP_HttpServer_IsHttpAutoStart(pServer);
+            }
+            set
+            {
+                HttpSdk.HP_HttpServer_SetHttpAutoStart(pServer, value);
+            }
+        }
     }
 
 }

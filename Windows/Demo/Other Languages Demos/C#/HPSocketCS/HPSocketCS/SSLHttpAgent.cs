@@ -8,13 +8,27 @@ namespace HPSocketCS
 {
     public class HttpsAgent : SSLHttpAgent
     {
+        public HttpsAgent()
+           : base()
+        {
 
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="verifyModel">验证模式</param>
+        /// <param name="pemCertFile">证书文件</param>
+        /// <param name="pemKeyFile">私钥文件</param>
+        /// <param name="keyPasswod">私钥密码（没有密码则为空）</param>
+        /// <param name="caPemCertFileOrPath">CA 证书文件或目录（单向验证或客户端可选）</param>
+        public HttpsAgent(SSLVerifyMode verifyModel, string pemCertFile, string pemKeyFile, string keyPasswod, string caPemCertFileOrPath)
+            : base(verifyModel, pemCertFile, pemKeyFile, keyPasswod, caPemCertFileOrPath)
+        {
+        }
     }
     public class SSLHttpAgent : HttpAgent
     {
-        static int ObjectReferer = 0;
-        static string SSLInitLock = "SSL初始化锁";
-
         /// <summary>
         /// 验证模式
         /// </summary>
@@ -37,32 +51,25 @@ namespace HPSocketCS
         public string CAPemCertFileOrPath { get; set; }
 
         public SSLHttpAgent()
+            : base()
         {
-            Interlocked.Increment(ref ObjectReferer);
         }
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="_verifyModel">验证模式</param>
-        /// <param name="_pemCertFile">证书文件</param>
-        /// <param name="_pemKeyFile">私钥文件</param>
-        /// <param name="_keyPasswod">私钥密码（没有密码则为空）</param>
-        /// <param name="_caPemCertFileOrPath">CA 证书文件或目录（单向验证或客户端可选）</param>
-        public SSLHttpAgent(SSLVerifyMode _verifyModel, string _pemCertFile, string _pemKeyFile, string _keyPasswod, string _caPemCertFileOrPath)
+        /// <param name="verifyModel">验证模式</param>
+        /// <param name="pemCertFile">证书文件</param>
+        /// <param name="pemKeyFile">私钥文件</param>
+        /// <param name="keyPasswod">私钥密码（没有密码则为空）</param>
+        /// <param name="caPemCertFileOrPath">CA 证书文件或目录（单向验证或客户端可选）</param>
+        public SSLHttpAgent(SSLVerifyMode verifyModel, string pemCertFile, string pemKeyFile, string keyPasswod, string caPemCertFileOrPath)
         {
-            Interlocked.Increment(ref ObjectReferer);
-            this.VerifyMode = _verifyModel;
-            this.PemCertFile = _pemCertFile;
-            this.PemKeyFile = _pemKeyFile;
-            this.KeyPasswod = _keyPasswod;
-            this.CAPemCertFileOrPath = _caPemCertFileOrPath;
-            //Initialize();
-        }
-
-        ~SSLHttpAgent()
-        {
-            //Uninitialize();
+            this.VerifyMode = verifyModel;
+            this.PemCertFile = pemCertFile;
+            this.PemKeyFile = pemKeyFile;
+            this.KeyPasswod = keyPasswod;
+            this.CAPemCertFileOrPath = caPemCertFileOrPath;
         }
 
         protected override bool CreateListener()
@@ -93,58 +100,33 @@ namespace HPSocketCS
         /// 初始化SSL环境
         /// </summary>
         /// <returns></returns>
-        protected virtual bool Initialize()
+        public virtual bool Initialize()
         {
-            lock (SSLInitLock)
+            if (pAgent != IntPtr.Zero)
             {
-                //if (SSLSdk.HP_SSL_IsValid() == false)
-                {
 
-                    PemCertFile = string.IsNullOrWhiteSpace(PemCertFile) ? null : PemCertFile;
-                    PemKeyFile = string.IsNullOrWhiteSpace(PemKeyFile) ? null : PemKeyFile;
-                    KeyPasswod = string.IsNullOrWhiteSpace(KeyPasswod) ? null : KeyPasswod;
-                    CAPemCertFileOrPath = string.IsNullOrWhiteSpace(CAPemCertFileOrPath) ? null : CAPemCertFileOrPath;
+                PemCertFile = string.IsNullOrWhiteSpace(PemCertFile) ? null : PemCertFile;
+                PemKeyFile = string.IsNullOrWhiteSpace(PemKeyFile) ? null : PemKeyFile;
+                KeyPasswod = string.IsNullOrWhiteSpace(KeyPasswod) ? null : KeyPasswod;
+                CAPemCertFileOrPath = string.IsNullOrWhiteSpace(CAPemCertFileOrPath) ? null : CAPemCertFileOrPath;
 
-
-                    var ret = SSLSdk.HP_SSLAgent_SetupSSLContext(pAgent, VerifyMode, PemCertFile, PemKeyFile, KeyPasswod, CAPemCertFileOrPath);
-                    System.Diagnostics.Trace.WriteLine($"ssl Initialize : {ret}");
-
-                }
-
-              return true;
+                return SSLSdk.HP_SSLAgent_SetupSSLContext(pAgent, VerifyMode, PemCertFile, PemKeyFile, KeyPasswod, CAPemCertFileOrPath);
             }
+
+            return true;
+
         }
 
         /// <summary>
         /// 反初始化SSL环境
         /// </summary>
-        protected virtual void Uninitialize()
+        public virtual void Uninitialize()
         {
-            if (Interlocked.Decrement(ref ObjectReferer) == 0 && pAgent != IntPtr.Zero)
+            if (pAgent != IntPtr.Zero)
             {
                 SSLSdk.HP_SSLAgent_CleanupSSLContext(pAgent);
             }
         }
-
-        /// <summary>
-        /// 启动通讯组件
-        /// 启动完成后可开始连接远程服务器
-        /// </summary>
-        /// <param name="address">绑定地址</param>
-        /// <param name="async">是否异步</param>
-        /// <returns></returns>
-        public new bool Start(string address, bool async = false)
-        {
-            Uninitialize();
-            bool ret = false;
-            if (Initialize())
-            {
-                ret = base.Start(address, async);
-            }
-
-            return ret;
-        }
-
 
         public override void Destroy()
         {

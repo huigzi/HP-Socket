@@ -54,6 +54,23 @@ namespace HPSocketCS
         public event HttpClientEvent.OnParseErrorEventHandler OnParseError;
 
         /// <summary>
+        /// 【必须】WebSocket数据包体通知(byte)
+        /// </summary>
+        public event WebSocketEvent.OnWSMessageBodyEventHandler OnWSMessageBody;
+        /// <summary>
+        /// 【必须】WebSocket数据包体通知(指针)
+        /// </summary>
+        public event WebSocketEvent.OnPointerWSMessageBodyEventHandler OnPointerWSMessageBody;
+        /// <summary>
+        /// 【必须】WebSocket数据完成解析通知
+        /// </summary>
+        public event WebSocketEvent.OnWSMessageCompleteEventHandler OnWSMessageComplete;
+        /// <summary>
+        /// 【必须】WebSocket数据头通知
+        /// </summary>
+        public event WebSocketEvent.OnWSMessageHeaderEventHandler OnWSMessageHeader;
+
+        /// <summary>
         /// 创建socket监听&服务组件
         /// </summary>
         /// <returns></returns>
@@ -112,7 +129,10 @@ namespace HPSocketCS
         HttpSdk.OnBody _OnBody;
         HttpSdk.OnMessageComplete _OnMessageComplete;
         HttpSdk.OnParseError _OnParseError;
-
+        //增加callback
+        HttpSdk.OnWSMessageBody _OnWSMessageBody;
+        HttpSdk.OnWSMessageComplete _OnWSMessageComplete;
+        HttpSdk.OnWSMessageHeader _OnWSMessageHeader;
         ///////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -125,6 +145,7 @@ namespace HPSocketCS
             _OnReceive = new Sdk.OnReceive(SDK_OnReceive);
             _OnClose = new Sdk.OnClose(SDK_OnClose);
             _OnHandShake = new Sdk.OnHandShake(SDK_OnHandShake);
+             
 
             // 设置 Socket 监听器回调函数
             HttpSdk.HP_Set_FN_HttpClient_OnPrepareConnect(pListener, _OnPrepareConnect);
@@ -146,6 +167,10 @@ namespace HPSocketCS
             _OnBody = new HttpSdk.OnBody(SDK_OnBody);
             _OnMessageComplete = new HttpSdk.OnMessageComplete(SDK_OnMessageComplete);
             _OnParseError = new HttpSdk.OnParseError(SDK_OnParseError);
+            //增加的
+            _OnWSMessageBody = new HttpSdk.OnWSMessageBody(SDK_OnWSMessageBody);
+            _OnWSMessageComplete = new HttpSdk.OnWSMessageComplete(SDK_OnWSMessageComplete);
+            _OnWSMessageHeader = new HttpSdk.OnWSMessageHeader(SDK_OnWSMessageHeader);
 
             HttpSdk.HP_Set_FN_HttpClient_OnMessageBegin(pListener, _OnMessageBegin);
             HttpSdk.HP_Set_FN_HttpClient_OnStatusLine(pListener, _OnStatusLine);
@@ -157,7 +182,51 @@ namespace HPSocketCS
             HttpSdk.HP_Set_FN_HttpClient_OnMessageComplete(pListener, _OnMessageComplete);
             HttpSdk.HP_Set_FN_HttpClient_OnUpgrade(pListener, _OnUpgrade);
             HttpSdk.HP_Set_FN_HttpClient_OnParseError(pListener, _OnParseError);
+            //设置回调
+            HttpSdk.HP_Set_FN_HttpAgent_OnWSMessageBody(pListener, _OnWSMessageBody);
+            HttpSdk.HP_Set_FN_HttpAgent_OnWSMessageComplete(pListener, _OnWSMessageComplete);
+            HttpSdk.HP_Set_FN_HttpAgent_OnWSMessageHeader(pListener, _OnWSMessageHeader);
+
         }
+
+        //数据包解析完成
+        private HandleResult SDK_OnWSMessageHeader(IntPtr pSender, IntPtr connId, bool bFinal, byte iReserved, byte iOperationCode, byte[] lpszMask, ulong ullBodyLen)
+        {
+            if (OnWSMessageHeader != null)
+            {
+
+                OnWSMessageHeader(connId, bFinal, iReserved, iOperationCode, lpszMask, ullBodyLen);
+            }
+
+            return HandleResult.Ok;
+        }
+
+        //头解析完成事件
+        private HandleResult SDK_OnWSMessageComplete(IntPtr pSender, IntPtr connId)
+        {
+            if (OnWSMessageComplete != null)
+            {
+                return OnWSMessageComplete(connId);
+            }
+            return HandleResult.Ok;
+        }
+        //包体事件!
+        private HandleResult SDK_OnWSMessageBody(IntPtr pSender, IntPtr connId, IntPtr pData, int iLength)
+        {
+            if (OnWSMessageBody != null)
+            {
+                byte[] bytes = new byte[iLength];
+                Marshal.Copy(pData, bytes, 0, iLength);
+                return OnWSMessageBody(connId, bytes);
+            }
+            else if (OnPointerWSMessageBody != null)
+            {
+                return OnPointerWSMessageBody(connId, pData, iLength);
+
+            }
+            return HandleResult.Ok;
+        }
+
 
         protected HttpParseResult SDK_OnParseError(IntPtr pSender, IntPtr connId, int iErrorCode, string lpszErrorDesc)
         {
@@ -387,6 +456,23 @@ namespace HPSocketCS
             int headersLength = headers == null ? 0 : headers.Length;
             return HttpSdk.HP_HttpClient_SendTrace(pClient, path, headers, headersLength);
         }
+        /// <summary>
+        /// 发送 WSMessage 请求
+        /// </summary>
+        /// <param name="dwConnID"></param>
+        /// <param name="bFinal"></param>
+        /// <param name="iReserved"></param>
+        /// <param name="iOperationCode"></param>
+        /// <param name="lpszMask"></param>
+        /// <param name="Data"></param>
+        /// <param name="ullBodyLen"></param>
+        /// <returns></returns>
+        public bool SendWSMessage( bool bFinal, byte iReserved, byte iOperationCode, byte[] lpszMask, byte[] pData, ulong ullBodyLen)
+        {
+            return HttpSdk.HP_HttpClient_SendWSMessage(pClient, bFinal, iReserved, iOperationCode, lpszMask, pData, pData.Length, ullBodyLen);
+        }
+
+
 
         /// <summary>
         /// 发送 OPTIONS 请求
@@ -412,6 +498,16 @@ namespace HPSocketCS
         {
             int headersLength = headers == null ? 0 : headers.Length;
             return HttpSdk.HP_HttpClient_SendConnect(pClient, path, headers, headersLength);
+        }
+
+        /// <summary>
+        /// 启动 HTTP 通信, 当通信组件设置为非自动启动 HTTP 通信时，需要调用本方法启动 HTTP 通信
+        /// </summary>
+        /// <param name="connId"></param>
+        /// <returns></returns>
+        public bool StartHttp()
+        {
+            return HttpSdk.HP_HttpClient_StartHttp(pClient);
         }
 
         /******************************************************************************/
@@ -734,6 +830,21 @@ namespace HPSocketCS
             }
 
             return list;
+        }
+
+        /// <summary>
+        /// 获取或设置 HTTP 启动方式,默认为true
+        /// </summary>
+        public bool HttpAutoStart
+        {
+            get
+            {
+                return HttpSdk.HP_HttpClient_IsHttpAutoStart(pClient);
+            }
+            set
+            {
+                HttpSdk.HP_HttpServer_SetHttpAutoStart(pClient, value);
+            }
         }
     }
 }

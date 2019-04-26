@@ -38,6 +38,7 @@ template<class T, USHORT default_port> class CHttpServerT : public IComplexHttpR
 
 public:
 	using __super::Stop;
+	using __super::GetState;
 	using __super::SendPackets;
 	using __super::Disconnect;
 	using __super::HasStarted;
@@ -45,6 +46,15 @@ public:
 	using __super::GetFreeSocketObjPool;
 	using __super::GetFreeSocketObjHold;
 	using __super::GetPendingDataLength;
+
+	using __super::IsSecure;
+	using __super::FireHandShake;
+	using __super::FindSocketObj;
+
+#ifdef _SSL_SUPPORT
+	using __super::StartSSLHandShake;
+	using __super::IsSSLAutoHandShake;
+#endif
 
 protected:
 	using CCleanThread	= CThread<CHttpServerT, VOID, UINT>;
@@ -65,7 +75,11 @@ public:
 
 	virtual BOOL SendWSMessage(CONNID dwConnID, BOOL bFinal, BYTE iReserved, BYTE iOperationCode, const BYTE lpszMask[4] = nullptr, BYTE* pData = nullptr, int iLength = 0, ULONGLONG ullBodyLen = 0);
 
+	virtual BOOL StartHttp(CONNID dwConnID);
+
 public:
+	virtual void SetHttpAutoStart(BOOL bAutoStart)				{m_bHttpAutoStart = bAutoStart;}
+	virtual BOOL IsHttpAutoStart()								{return m_bHttpAutoStart;}
 
 	virtual void SetLocalVersion(EnHttpVersion enLocalVersion)	{m_enLocalVersion = enLocalVersion;}
 	virtual void SetReleaseDelay(DWORD dwReleaseDelay)			{m_dwReleaseDelay = dwReleaseDelay;}
@@ -99,8 +113,13 @@ public:
 	virtual BOOL GetWSMessageState(CONNID dwConnID, BOOL* lpbFinal, BYTE* lpiReserved, BYTE* lpiOperationCode, LPCBYTE* lpszMask, ULONGLONG* lpullBodyLen, ULONGLONG* lpullBodyRemain);
 
 private:
+	BOOL StartHttp(TSocketObj* pSocketObj);
+	void DoStartHttp(TSocketObj* pSocketObj);
+
+private:
 	virtual BOOL CheckParams();
 	virtual void PrepareStart();
+	virtual EnHandleResult FireAccept(TSocketObj* pSocketObj);
 	virtual EnHandleResult DoFireAccept(TSocketObj* pSocketObj);
 	virtual EnHandleResult DoFireHandShake(TSocketObj* pSocketObj);
 	virtual EnHandleResult DoFireReceive(TSocketObj* pSocketObj, const BYTE* pData, int iLength);
@@ -157,6 +176,7 @@ public:
 	CHttpServerT(IHttpServerListener* pListener)
 	: T					(pListener)
 	, m_pListener		(pListener)
+	, m_bHttpAutoStart	(TRUE)
 	, m_enLocalVersion	(DEFAULT_HTTP_VERSION)
 	, m_dwReleaseDelay	(DEFAULT_HTTP_RELEASE_DELAY)
 	{
@@ -165,7 +185,7 @@ public:
 
 	virtual ~CHttpServerT()
 	{
-		Stop();
+		ENSURE_STOP();
 	}
 
 private:
@@ -176,6 +196,8 @@ private:
 
 	EnHttpVersion				m_enLocalVersion;
 	DWORD						m_dwReleaseDelay;
+
+	BOOL						m_bHttpAutoStart;
 
 	CCASQueue<TDyingConnection>	m_lsDyingQueue;
 

@@ -164,5 +164,31 @@ namespace HPSocketCS
             IsCreate = false;
         }
 
+
+        /// <summary>
+        /// 启动 SSL 握手
+        /// 当通信组件设置为非自动握手时，需要调用本方法启动 SSL 握手
+        /// </summary>
+        /// <param name="connId"></param>
+        /// <returns></returns>
+        public bool StartSSLHandShake(IntPtr connId)
+        {
+            return SSLSdk.HP_SSLAgent_StartSSLHandShake(pAgent, connId);
+        }
+
+        /// <summary>
+        /// 获取或设置通信组件握手方式（默认：TRUE，自动握手)
+        /// </summary>
+        public bool AutoHandShake
+        {
+            get
+            {
+                return SSLSdk.HP_SSLAgent_IsSSLAutoHandShake(pAgent);
+            }
+            set
+            {
+                SSLSdk.HP_SSLAgent_SetSSLAutoHandShake(pAgent, value);
+            }
+        }
     }
 }

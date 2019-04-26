@@ -148,7 +148,7 @@ public:
 
 public:
 	
-		/*
+	/*
 	* 名称：清理线程局部环境 SSL 资源
 	* 描述：任何一个操作 SSL 的线程，在通信结束时都需要清理线程局部环境 SSL 资源
 	*		1、主线程和 HP-Socket 工作线程在通信结束时会自动清理线程局部环境 SSL 资源。因此，一般情况下不必手工调用本方法
@@ -180,7 +180,7 @@ private:
 
 private:
 
-	static int CALLBACK InternalServerNameCallback(SSL* ssl, int* ad, void* arg);
+	static int InternalServerNameCallback(SSL* ssl, int* ad, void* arg);
 
 private:
 
@@ -236,6 +236,12 @@ public:
 	{
 		Reset();
 	}
+
+	static CSSLSession* Construct(CItemPool& itPool)
+		{return new CSSLSession(itPool);}
+
+	static void Destruct(CSSLSession* pSession)
+		{if(pSession) delete pSession;}
 
 private:
 	CItemPool&				m_itPool;

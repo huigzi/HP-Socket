@@ -31,9 +31,13 @@ Desc:
 #pragma once
 
 #include "Singleton.h"
+#include "SysHelper.h"
 #include "STLHelper.h"
 #include "RingBuffer.h"
 #include "PrivateHeap.h"
+
+#pragma warning(push)
+#pragma warning(disable: 4458)
 
 struct TItem
 {
@@ -287,7 +291,7 @@ public:
 
 	inline void Prepare()
 	{
-		m_lsFreeItem.Reset(m_dwPoolHold);
+		m_lsFreeItem.Reset(m_dwPoolSize);
 	}
 
 	inline void Clear()
@@ -297,7 +301,7 @@ public:
 		while(m_lsFreeItem.TryGet(&pItem))
 			T::Destruct(pItem);
 
-		VERIFY(m_lsFreeItem.IsEmpty());
+		ENSURE(m_lsFreeItem.IsEmpty());
 		m_lsFreeItem.Reset();
 
 		m_heap.Reset();
@@ -341,8 +345,8 @@ private:
 };
 
 template<class T> const DWORD CNodePoolT<T>::DEFAULT_ITEM_CAPACITY	= TItem::DEFAULT_ITEM_CAPACITY;
-template<class T> const DWORD CNodePoolT<T>::DEFAULT_POOL_SIZE		= 300;
-template<class T> const DWORD CNodePoolT<T>::DEFAULT_POOL_HOLD		= 1200;
+template<class T> const DWORD CNodePoolT<T>::DEFAULT_POOL_SIZE		= DEFAULT_BUFFER_CACHE_POOL_SIZE;
+template<class T> const DWORD CNodePoolT<T>::DEFAULT_POOL_HOLD		= DEFAULT_BUFFER_CACHE_POOL_HOLD;
 
 typedef CNodePoolT<TItem>	CItemPool;
 
@@ -485,10 +489,10 @@ private:
 	int length;
 };
 
-struct TItemPtr
+template<class T> struct TItemPtrT
 {
 public:
-	TItem* Reset(TItem* pItem = nullptr)
+	T* Reset(T* pItem = nullptr)
 	{
 		if(m_pItem != nullptr)
 			itPool.PutFreeItem(m_pItem);
@@ -498,45 +502,53 @@ public:
 		return m_pItem;
 	}
 
-	TItem* Attach(TItem* pItem)
+	T* Attach(T* pItem)
 	{
 		return Reset(pItem);
 	}
 
-	TItem* Detach()
+	T* Detach()
 	{
-		TItem* pItem = m_pItem;
-		m_pItem		 = nullptr;
+		T* pItem = m_pItem;
+		m_pItem	 = nullptr;
 
 		return pItem;
 	}
 
-	bool IsValid			()				{return m_pItem != nullptr;}
-	TItem* operator ->		()				{return m_pItem;}
-	TItem* operator =		(TItem* pItem)	{return Reset(pItem);}
-	operator TItem*			()				{return m_pItem;}
-	TItem* Ptr				()				{return m_pItem;}
-	const TItem* Ptr		()	const		{return m_pItem;}
-	operator const TItem*	()	const		{return m_pItem;}
+	T* New()
+	{
+		return Attach(itPool.PickFreeItem());
+	}
+
+	bool IsValid		()			{return m_pItem != nullptr;}
+	T* operator ->		()			{return m_pItem;}
+	T* operator =		(T* pItem)	{return Reset(pItem);}
+	operator T*			()			{return m_pItem;}
+	T*& PtrRef			()			{return m_pItem;}
+	T* Ptr				()			{return m_pItem;}
+	const T* Ptr		()	const	{return m_pItem;}
+	operator const T*	()	const	{return m_pItem;}
 
 public:
-	TItemPtr(CItemPool& pool, TItem* pItem = nullptr)
+	TItemPtrT(CNodePoolT<T>& pool, T* pItem = nullptr)
 	: itPool(pool), m_pItem(pItem)
 	{
 
 	}
 
-	~TItemPtr()
+	~TItemPtrT()
 	{
 		Reset();
 	}
 
-	DECLARE_NO_COPY_CLASS(TItemPtr)
+	DECLARE_NO_COPY_CLASS(TItemPtrT)
 
 private:
-	CItemPool&	itPool;
-	TItem*		m_pItem;
+	CNodePoolT<T>&	itPool;
+	T*				m_pItem;
 };
+
+typedef TItemPtrT<TItem> TItemPtr;
 
 struct TBuffer
 {
@@ -562,6 +574,8 @@ public:
 	ULONG_PTR ID		()	const	{return id;}
 	int Length			()	const	{return length;}
 	bool IsValid		()	const	{return id != 0;}
+
+	DWORD GetFreeTime	()	const	{return freeTime;}
 
 private:
 	int IncreaseLength	(int len)	{return (length += len);}
@@ -680,3 +694,5 @@ private:
 	TBufferList		m_lsFreeBuffer;
 	TBufferQueue	m_lsGCBuffer;
 };
+
+#pragma warning(pop)

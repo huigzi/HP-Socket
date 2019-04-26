@@ -15,16 +15,16 @@ namespace HPSocketCS
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="_verifyModel">验证模式</param>
-        /// <param name="_pemCertFile">证书文件（客户端可选）</param>
-        /// <param name="_pemKeyFile">私钥文件（客户端可选）</param>
-        /// <param name="_keyPasswod">私钥密码（没有密码则为空）</param>
-        /// <param name="_caPemCertFileOrPath">CA 证书文件或目录（单向验证或客户端可选）</param>
-        public SSLPackAgent(SSLVerifyMode _verifyModel, string _pemCertFile, string _pemKeyFile, string _keyPasswod, string _caPemCertFileOrPath)
-            : base(_verifyModel, _pemCertFile, _pemKeyFile, _keyPasswod, _caPemCertFileOrPath)
+        /// <param name="verifyModel">验证模式</param>
+        /// <param name="pemCertFile">证书文件（客户端可选）</param>
+        /// <param name="pemKeyFile">私钥文件（客户端可选）</param>
+        /// <param name="keyPasswod">私钥密码（没有密码则为空）</param>
+        /// <param name="caPemCertFileOrPath">CA 证书文件或目录（单向验证或客户端可选）</param>
+        public SSLPackAgent(SSLVerifyMode verifyModel, string pemCertFile, string pemKeyFile, string keyPasswod, string caPemCertFileOrPath)
+            : base(verifyModel, pemCertFile, pemKeyFile, keyPasswod, caPemCertFileOrPath)
         {
-
         }
+
 
         /// <summary>
         /// 创建socket监听&服务组件
@@ -106,7 +106,5 @@ namespace HPSocketCS
                 Sdk.HP_TcpPackAgent_SetPackHeaderFlag(pAgent, value);
             }
         }
-
-
     }
 }

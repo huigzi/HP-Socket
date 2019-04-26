@@ -1,25 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Runtime.InteropServices;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
 
 namespace HPSocketCS
 {
-    public class TcpClientEvent
-    {
-        public delegate HandleResult OnPrepareConnectEventHandler(TcpClient sender, IntPtr socket);
-        public delegate HandleResult OnConnectEventHandler(TcpClient sender);
-        public delegate HandleResult OnSendEventHandler(TcpClient sender, byte[] bytes);
-        public delegate HandleResult OnReceiveEventHandler(TcpClient sender, byte[] bytes);
-        public delegate HandleResult OnPointerDataReceiveEventHandler(TcpClient sender, IntPtr pData, int length);
-        public delegate HandleResult OnCloseEventHandler(TcpClient sender, SocketOperation enOperation, int errorCode);
-        public delegate HandleResult OnHandShakeEventHandler(TcpClient sender);
-    }
-
     public class TcpClient<T> : TcpClient
     {
         public T GetExtra()
@@ -33,21 +22,9 @@ namespace HPSocketCS
         }
     }
 
-    public class TcpClient
+    public class TcpClient : IClient
     {
-        protected IntPtr _pClient = IntPtr.Zero;
-        protected IntPtr pClient
-        {
-            get
-            {
-                return _pClient;
-            }
-
-            set
-            {
-                _pClient = value;
-            }
-        }
+        protected IntPtr pClient = IntPtr.Zero;
 
         protected IntPtr pListener = IntPtr.Zero;
 
@@ -57,33 +34,32 @@ namespace HPSocketCS
         /// <summary>
         /// 准备连接了事件
         /// </summary>
-        public event TcpClientEvent.OnPrepareConnectEventHandler OnPrepareConnect;
+        public event ClientEvent.OnPrepareConnectEventHandler OnPrepareConnect;
         /// <summary>
         /// 连接事件
         /// </summary>
-        public event TcpClientEvent.OnConnectEventHandler OnConnect;
+        public event ClientEvent.OnConnectEventHandler OnConnect;
         /// <summary>
         /// 数据发送事件
         /// </summary>
-        public event TcpClientEvent.OnSendEventHandler OnSend;
+        public event ClientEvent.OnSendEventHandler OnSend;
         /// <summary>
         /// 数据到达事件
         /// </summary>
-        public event TcpClientEvent.OnReceiveEventHandler OnReceive;
+        public event ClientEvent.OnReceiveEventHandler OnReceive;
         /// <summary>
         /// 数据到达事件(指针数据)
         /// </summary>
-        public event TcpClientEvent.OnPointerDataReceiveEventHandler OnPointerDataReceive;
+        public event ClientEvent.OnPointerDataReceiveEventHandler OnPointerDataReceive;
         /// <summary>
         /// 连接关闭事件
         /// </summary>
-        public event TcpClientEvent.OnCloseEventHandler OnClose;
+        public event ClientEvent.OnCloseEventHandler OnClose;
         /// <summary>
         /// 握手事件
         /// </summary>
-        public event TcpClientEvent.OnHandShakeEventHandler OnHandShake;
-        
-
+        public event ClientEvent.OnHandShakeEventHandler OnHandShake;
+         
         public TcpClient()
         {
             CreateListener();
@@ -200,6 +176,37 @@ namespace HPSocketCS
 
             return Sdk.HP_Client_StartWithBindAddress(pClient, address, port, async, bindAddress);
         }
+
+        /// <summary>
+        /// 启动通讯组件并连接到服务器
+        /// </summary>
+        /// <param name="address">远程地址</param>
+        /// <param name="port">远程端口</param>
+        /// <param name="bindAddress">本地绑定到哪个ip?,多ip下可以选择绑定到指定ip</param>
+        /// <param name="usLocalPort">本地端口</param>
+        /// <param name="async">是否异步</param>
+        /// <returns></returns>
+        public bool Connect(string address, ushort port, string bindAddress, ushort usLocalPort, bool async = true)
+        {
+            if (string.IsNullOrEmpty(address) == true)
+            {
+                throw new Exception("address is null");
+            }
+            else if (port == 0)
+            {
+                throw new Exception("port is zero");
+            }
+
+            if (IsStarted == true)
+            {
+                return false;
+            }
+
+            this.SetCallback();
+
+            return Sdk.HP_Client_StartWithBindAddressAndLocalPort(pClient, address, port, async, bindAddress, usLocalPort);
+        }
+
 
         /// <summary>
         /// 停止通讯组件
@@ -442,7 +449,7 @@ namespace HPSocketCS
             get
             {
                 IntPtr ptr = Sdk.HP_Client_GetLastErrorDesc(pClient);
-                string desc = Marshal.PtrToStringUni(ptr);
+                string desc = Marshal.PtrToStringAnsi(ptr);
                 return desc;
             }
         }
@@ -752,7 +759,7 @@ namespace HPSocketCS
         public string GetSocketErrorDesc(SocketError code)
         {
             IntPtr ptr = Sdk.HP_GetSocketErrorDesc(code);
-            string desc = Marshal.PtrToStringUni(ptr);
+            string desc = Marshal.PtrToStringAnsi(ptr);
             return desc;
         }
 

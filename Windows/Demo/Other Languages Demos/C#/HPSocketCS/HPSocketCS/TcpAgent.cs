@@ -103,6 +103,14 @@ namespace HPSocketCS
             Destroy();
         }
 
+        public IntPtr Sender
+        {
+            get
+            {
+                return pAgent;
+            }
+        }
+
         /// <summary>
         /// 创建socket监听&服务组件
         /// </summary>
@@ -194,19 +202,6 @@ namespace HPSocketCS
             return Sdk.HP_Agent_Stop(pAgent);
         }
 
-
-        /// <summary>
-        /// 连接服务器，连接成功后 IAgentListener 会接收到 OnConnect() 事件
-        /// </summary>
-        /// <param name="address"></param>
-        /// <param name="port"></param>
-        /// <param name="connId"></param>
-        /// <returns></returns>
-        public bool Connect(string address, ushort port, ref IntPtr connId)
-        {
-            return Sdk.HP_Agent_Connect(pAgent, address, port, ref connId);
-        }
-
         public IntPtr Connect(string address, ushort port)
         {
             IntPtr connId = IntPtr.Zero;
@@ -222,6 +217,58 @@ namespace HPSocketCS
         }
 
         /// <summary>
+        /// 连接服务器，连接成功后 IAgentListener 会接收到 OnConnect() 事件
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="port"></param>
+        /// <param name="connId"></param>
+        /// <returns></returns>
+        public bool Connect(string address, ushort port, ref IntPtr connId)
+        {
+            return Sdk.HP_Agent_Connect(pAgent, address, port, ref connId);
+        }
+
+        /// <summary>
+        /// 连接服务器，连接成功后 IAgentListener 会接收到 OnConnect() 事件
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="port"></param>
+        /// <param name="connId"></param>
+        /// <param name="usLocalPort">本地端口</param>
+        /// <returns></returns>
+        public bool Connect(string address, ushort port, ref IntPtr connId, ushort usLocalPort)
+        {
+            return Sdk.HP_Agent_ConnectWithLocalPort(pAgent, address, port, ref connId, usLocalPort);
+        }
+
+        /// <summary>
+        /// 连接服务器，连接成功后 IAgentListener 会接收到 OnConnect() 事件
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="port"></param>
+        /// <param name="connId"></param>
+        /// <param name="localAddress">本地地址（默认：nullptr，使用 Start() 方法中绑定的地址）</param>
+        /// <returns></returns>
+        public bool Connect(string address, ushort port, ref IntPtr connId, string localAddress)
+        {
+            return Sdk.HP_Agent_ConnectWithLocalAddress(pAgent, address, port, ref connId, localAddress);
+        }
+
+        /// <summary>
+        /// 连接服务器，连接成功后 IAgentListener 会接收到 OnConnect() 事件
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="port"></param>
+        /// <param name="connId"></param>
+        /// <param name="localAddress">本地地址（默认：nullptr，使用 Start() 方法中绑定的地址）</param>
+        /// <param name="usLocalPort">本地端口</param>
+        /// <returns></returns>
+        public bool Connect(string address, ushort port, ref IntPtr connId, string localAddress, ushort usLocalPort)
+        {
+            return Sdk.HP_Agent_ConnectWithExtraAndLocalAddressPort(pAgent, address, port, ref connId, IntPtr.Zero, usLocalPort, localAddress);
+        }
+
+        /// <summary>
         /// 发送数据
         /// </summary>
         /// <param name="connId"></param>
@@ -232,7 +279,6 @@ namespace HPSocketCS
         {
             return Sdk.HP_Agent_Send(pAgent, connId, bytes, size);
         }
-
 
         /// <summary>
         /// 发送数据
@@ -598,7 +644,7 @@ namespace HPSocketCS
             get
             {
                 IntPtr ptr = Sdk.HP_Agent_GetLastErrorDesc(pAgent);
-                string desc = Marshal.PtrToStringUni(ptr);
+                string desc = Marshal.PtrToStringAnsi(ptr);
                 return desc;
             }
         }
@@ -969,6 +1015,21 @@ namespace HPSocketCS
         }
 
         /// <summary>
+        /// 获取或设置 OnSend 事件同步策略
+        /// </summary>
+        public OnSendSyncPolicy OnSendSyncPolicy
+        {
+            get
+            {
+                return Sdk.HP_Agent_GetOnSendSyncPolicy(pAgent);
+            }
+            set
+            {
+                Sdk.HP_Agent_SetOnSendSyncPolicy(pAgent, value);
+            }
+        }
+
+        /// <summary>
         /// 根据错误码返回错误信息
         /// </summary>
         /// <param name="code"></param>
@@ -976,7 +1037,7 @@ namespace HPSocketCS
         public string GetSocketErrorDesc(SocketError code)
         {
             IntPtr ptr = Sdk.HP_GetSocketErrorDesc(code);
-            string desc = Marshal.PtrToStringUni(ptr);
+            string desc = Marshal.PtrToStringAnsi(ptr);
             return desc;
         }
 

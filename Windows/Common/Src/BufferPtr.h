@@ -121,6 +121,7 @@ public:
 	T&			Get(int i)				{return *(m_pch + i);}
 	const T&	Get(int i)		const	{return *(m_pch + i);}
 	size_t		Size()			const	{return m_size;}
+	size_t		Capacity()		const	{return m_capacity;}
 	bool		IsValid()		const	{return m_pch != 0;}
 
 	operator							T*	()									{return Ptr();}
@@ -138,22 +139,26 @@ private:
 
 	T* Alloc(size_t size, bool zero = false, bool is_realloc = false)
 	{
-		if(size >= 0 && size != m_size)
+		if(size != m_size)
 		{
 			size_t rsize = GetAllocSize(size);
 			if(size > m_capacity || rsize < m_size)
 			{
-				m_pch = is_realloc							?
+				T* pch = is_realloc							?
 					(T*)realloc(m_pch, rsize * sizeof(T))	:
 					(T*)malloc(rsize * sizeof(T))			;
 
-				if(m_pch || rsize == 0)
+				if(pch || rsize == 0)
 				{
+					m_pch		= pch;
 					m_size		= size;
 					m_capacity	= rsize;
 				}
 				else
-					Reset();
+				{
+					Free();
+					throw std::bad_alloc();
+				}
 			}
 			else
 				m_size = size;

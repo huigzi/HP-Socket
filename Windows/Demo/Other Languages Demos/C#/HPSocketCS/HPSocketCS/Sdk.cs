@@ -1,13 +1,53 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Runtime.InteropServices;
-using HPSocketCS;
 using System.Net;
+using System.Runtime.InteropServices;
+using System.Text;
+using HPSocketCS;
 
 namespace HPSocketCS
 {
+    public interface IServer
+    {
+
+    }
+    public class ServerEvent
+    {
+        public delegate HandleResult OnSendEventHandler(IServer sender, IntPtr connId, byte[] bytes);
+        public delegate HandleResult OnReceiveEventHandler(IServer sender, IntPtr connId, byte[] bytes);
+        public delegate HandleResult OnPointerDataReceiveEventHandler(IServer sender, IntPtr connId, IntPtr pData, int length);
+        public delegate HandleResult OnCloseEventHandler(IServer sender, IntPtr connId, SocketOperation enOperation, int errorCode);
+        public delegate HandleResult OnShutdownEventHandler(IServer sender);
+        public delegate HandleResult OnPrepareListenEventHandler(IServer sender, IntPtr soListen);
+        /// <summary>
+        /// 连接进入
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="connId"></param>
+        /// <param name="pClient">如果为 TCP 连接，pClient为 SOCKET 句柄；如果为 UDP 连接，pClient为 SOCKADDR 指针；</param>
+        /// <returns></returns>
+        public delegate HandleResult OnAcceptEventHandler(IServer sender, IntPtr connId, IntPtr pClient);
+        public delegate HandleResult OnHandShakeEventHandler(IServer sender, IntPtr connId);
+    }
+
+    public interface IClient
+    {
+
+    }
+
+    public class ClientEvent
+    {
+        public delegate HandleResult OnPrepareConnectEventHandler(IClient sender, IntPtr socket);
+        public delegate HandleResult OnConnectEventHandler(IClient sender);
+        public delegate HandleResult OnSendEventHandler(IClient sender, byte[] bytes);
+        public delegate HandleResult OnReceiveEventHandler(IClient sender, byte[] bytes);
+        public delegate HandleResult OnPointerDataReceiveEventHandler(IClient sender, IntPtr pData, int length);
+        public delegate HandleResult OnCloseEventHandler(IClient sender, SocketOperation enOperation, int errorCode);
+        public delegate HandleResult OnHandShakeEventHandler(IClient sender);
+    }
+
+
 
     /// <summary>
     /// 通信组件服务状态,用程序可以通过通信组件的 GetState() 方法获取组件当前服务状态
@@ -25,11 +65,11 @@ namespace HPSocketCS
         /// <summary>
         /// 正在停止
         /// </summary>
-        Stoping = 2,
+        Stopping = 2,
         /// <summary>
         /// 已经启动
         /// </summary>
-        Stoped = 3,
+        Stopped = 3,
     }
 
     /// <summary>
@@ -38,8 +78,8 @@ namespace HPSocketCS
     public enum SocketOperation
     {
         Unknown = 0,    // Unknown
-        Acccept = 1,    // Acccept
-        Connnect = 2,   // Connnect
+        Accept = 1,    // Accept
+        Connect = 2,   // Connect
         Send = 3,       // Send
         Receive = 4,    // Receive
         Close = 5,    // Receive
@@ -176,6 +216,28 @@ namespace HPSocketCS
         /// </summary>
         Direct = 2,
     };
+
+
+    /// <summary>
+    /// OnSend 事件同步策略
+    /// Server 组件和 Agent 组件的 OnSend 事件同步策略
+    /// </summary>
+    public enum OnSendSyncPolicy
+    {
+        /// <summary>
+        /// 不同步（默认）	：不同步 OnSend 事件，此时可能同时触发 OnReceive 和 OnClose 事件
+        /// </summary>
+        OSSP_NONE = 0,
+        /// <summary>
+        /// 同步 OnClose	：只同步 OnClose 事件，此时可能同时触发 OnReceive 事件
+        /// </summary>
+        OSSP_CLOSE = 1,
+        /// <summary>
+        /// 同步 OnReceive	：（只用于 TCP 组件）同步 OnReceive 和 OnClose 事件，此处不可能同时触发 OnReceive 或 OnClose 事件
+        /// </summary>
+        OSSP_RECEIVE = 2,
+    }
+
 
     /// <summary>
     /// 播送模式  UDP 组件的播送模式（组播或广播）
@@ -316,7 +378,7 @@ namespace HPSocketCS
 
 
 /// <summary>
-/// Unicode版本
+/// ANSI版本
 /// </summary>
 public class Sdk
 {
@@ -325,7 +387,7 @@ public class Sdk
     /// <summary>
     /// HPSocket的文件路径
     /// </summary>
-    public const string HPSOCKET_DLL_PATH = "HPSocket4C_U.dll";
+    public const string HPSOCKET_DLL_PATH = "hpsocket4c";
 
     /*****************************************************************************************************/
     /******************************************** 公共类、接口 ********************************************/
@@ -335,7 +397,7 @@ public class Sdk
 
     /****************************************************/
     /************** HPSocket4C.dll 回调函数 **************/
-    /* Agent & Server & Clent */
+    /* Agent & Server & Client */
     public delegate HandleResult OnSend(IntPtr pSender, IntPtr connId, IntPtr pData, int length);
     public delegate HandleResult OnReceive(IntPtr pSender, IntPtr connId, IntPtr pData, int length);
     public delegate HandleResult OnPullReceive(IntPtr pSender, IntPtr connId, int length);
@@ -362,7 +424,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpServer(IntPtr pListener);
 
     /// <summary>
@@ -370,7 +432,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpClient(IntPtr pListener);
 
     /// <summary>
@@ -378,7 +440,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpAgent(IntPtr pListener);
 
     /// <summary>
@@ -386,7 +448,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPullServer(IntPtr pListener);
 
     /// <summary>
@@ -394,7 +456,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPullClient(IntPtr pListener);
 
     /// <summary>
@@ -402,7 +464,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPullAgent(IntPtr pListener);
 
     /// <summary>
@@ -410,7 +472,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPackServer(IntPtr pListener);
 
     /// <summary>
@@ -418,7 +480,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPackAgent(IntPtr pListener);
 
     /// <summary>
@@ -426,7 +488,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPackClient(IntPtr pListener);
 
     /// <summary>
@@ -434,7 +496,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_UdpServer(IntPtr pListener);
 
     /// <summary>
@@ -442,7 +504,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_UdpClient(IntPtr pListener);
 
 
@@ -451,7 +513,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_UdpCast(IntPtr pListener);
 
 
@@ -460,7 +522,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpServer(IntPtr pServer);
 
     /// <summary>
@@ -468,7 +530,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpClient(IntPtr pClient);
 
     /// <summary>
@@ -476,7 +538,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpAgent(IntPtr pAgent);
 
     /// <summary>
@@ -484,7 +546,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPullServer(IntPtr pServer);
 
     /// <summary>
@@ -492,7 +554,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPullClient(IntPtr pClient);
 
     /// <summary>
@@ -500,28 +562,28 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPullAgent(IntPtr pAgent);
 
     /// <summary>
     /// 销毁 HP_TcpPackServer 对象
     /// </summary>
     /// <param name="pServer"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPackServer(IntPtr pServer);
 
     /// <summary>
     /// 销毁 HP_TcpPackAgent 对象
     /// </summary>
     /// <param name="pAgent"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPackAgent(IntPtr pAgent);
 
     /// <summary>
     /// 销毁 HP_TcpPackClient 对象
     /// </summary>
     /// <param name="pClient"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPackClient(IntPtr pClient);
 
 
@@ -530,7 +592,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_UdpServer(IntPtr pServer);
 
     /// <summary>
@@ -538,7 +600,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_UdpClient(IntPtr pClient);
 
     /// <summary>
@@ -546,7 +608,7 @@ public class Sdk
     /// </summary>
     /// <param name="pCast"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_UdpCast(IntPtr pCast);
 
 
@@ -554,84 +616,84 @@ public class Sdk
     /// 创建 TcpServerListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpServerListener();
 
     /// <summary>
     /// 创建 TcpClientListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpClientListener();
 
     /// <summary>
     /// 创建 TcpAgentListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpAgentListener();
 
     /// <summary>
     /// 创建 TcpPullServerListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPullServerListener();
 
     /// <summary>
     /// 创建 TcpPullClientListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPullClientListener();
 
     /// <summary>
     /// 创建 TcpPullAgentListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPullAgentListener();
 
     /// <summary>
     /// 创建 TcpPackServerListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPackServerListener();
 
     /// <summary>
     /// 创建 TcpPackClientListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPackClientListener();
 
     /// <summary>
     /// 创建 TcpPackAgentListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_TcpPackAgentListener();
 
     /// <summary>
     /// 创建 UdpServerListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_UdpServerListener();
 
     /// <summary>
     /// 创建 UdpClientListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_UdpClientListener();
 
     /// <summary>
     /// 创建 HP_UdpCastListener 对象
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr Create_HP_UdpCastListener();
 
 
@@ -641,7 +703,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpServerListener(IntPtr pListener);
 
     /// <summary>
@@ -649,7 +711,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpClientListener(IntPtr pListener);
 
     /// <summary>
@@ -657,7 +719,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpAgentListener(IntPtr pListener);
 
 
@@ -666,7 +728,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPullServerListener(IntPtr pListener);
 
     /// <summary>
@@ -674,7 +736,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPullClientListener(IntPtr pListener);
 
     /// <summary>
@@ -682,7 +744,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPullAgentListener(IntPtr pListener);
 
     /// <summary>
@@ -690,7 +752,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPackServerListener(IntPtr pListener);
 
     /// <summary>
@@ -698,7 +760,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPackClientListener(IntPtr pListener);
 
     /// <summary>
@@ -706,7 +768,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_TcpPackAgentListener(IntPtr pListener);
 
     /// <summary>
@@ -714,7 +776,7 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_UdpServerListener(IntPtr pListener);
 
     /// <summary>
@@ -722,73 +784,73 @@ public class Sdk
     /// </summary>
     /// <param name="pListener"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_UdpClientListener(IntPtr pListener);
 
     /// <summary>
     /// 销毁 HP_UdpCastListener 对象
     /// </summary>
     /// <param name="pListener"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void Destroy_HP_UdpCastListener(IntPtr pListener);
 
 
     /**********************************************************************************/
     /***************************** Server 回调函数设置方法 *****************************/
 
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Server_OnPrepareListen(IntPtr pListener, OnPrepareListen fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Server_OnAccept(IntPtr pListener, OnAccept fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Server_OnHandShake(IntPtr pListener, OnHandShake fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Server_OnSend(IntPtr pListener, OnSend fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Server_OnReceive(IntPtr pListener, OnReceive fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Server_OnPullReceive(IntPtr pListener, OnPullReceive fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Server_OnClose(IntPtr pListener, OnClose fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Server_OnShutdown(IntPtr pListener, OnShutdown fn);
 
     /**********************************************************************************/
     /***************************** Client 回调函数设置方法 *****************************/
 
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Client_OnPrepareConnect(IntPtr pListener, OnPrepareConnect fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Client_OnConnect(IntPtr pListener, OnConnect fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Client_OnHandShake(IntPtr pListener, OnHandShake fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Client_OnSend(IntPtr pListener, OnSend fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Client_OnReceive(IntPtr pListener, OnReceive fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Client_OnPullReceive(IntPtr pListener, OnPullReceive fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Client_OnClose(IntPtr pListener, OnClose fn);
 
     /**********************************************************************************/
     /****************************** Agent 回调函数设置方法 *****************************/
 
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Agent_OnPrepareConnect(IntPtr pListener, OnPrepareConnect fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Agent_OnConnect(IntPtr pListener, OnConnect fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Agent_OnHandShake(IntPtr pListener, OnHandShake fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Agent_OnSend(IntPtr pListener, OnSend fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Agent_OnReceive(IntPtr pListener, OnReceive fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Agent_OnPullReceive(IntPtr pListener, OnPullReceive fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Agent_OnClose(IntPtr pListener, OnClose fn);
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Set_FN_Agent_OnShutdown(IntPtr pListener, OnShutdown fn);
 
     /**************************************************************************/
@@ -802,7 +864,7 @@ public class Sdk
     /// <param name="pszBindAddress">监听地址</param>
     /// <param name="usPort">监听端口</param>
     /// <returns>失败，可通过 GetLastError() 获取错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi)]
     public static extern bool HP_Server_Start(IntPtr pServer, string pszBindAddress, ushort usPort);
 
     /// <summary>
@@ -810,7 +872,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns>失败，可通过 GetLastError() 获取错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_Stop(IntPtr pServer);
 
     /// <summary>
@@ -832,7 +894,7 @@ public class Sdk
     /// <param name="pBuffer">发送数据长度</param>
     /// <param name="length">发送数据长度</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_Send(IntPtr pServer, IntPtr connId, IntPtr pBuffer, int length);
 
     /// <summary>
@@ -856,7 +918,7 @@ public class Sdk
     /// <param name="length"></param>
     /// <param name="iOffset">针对pBuffer的偏移</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_SendPart(IntPtr pServer, IntPtr connId, IntPtr pBuffer, int length, int iOffset);
 
 
@@ -871,9 +933,9 @@ public class Sdk
     /// <param name="pBuffers">发送缓冲区数组</param>
     /// <param name="iCount">发送缓冲区数目</param>
     /// <returns>TRUE.成功,FALSE.失败，可通过 Windows API 函数 ::GetLastError() 获取 Windows 错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_SendPackets(IntPtr pServer, IntPtr connId, WSABUF[] pBuffers, int iCount);
-   
+
     /// <summary>
     /// 名称：暂停/恢复接收
     /// 描述：暂停/恢复某个连接的数据接收工作
@@ -882,7 +944,7 @@ public class Sdk
     /// <param name="dwConnID">连接 ID</param>
     /// <param name="bPause">TRUE - 暂停, FALSE - 恢复</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_PauseReceive(IntPtr pServer, IntPtr dwConnID, bool bPause);
 
 
@@ -894,7 +956,7 @@ public class Sdk
     /// <param name="connId">连接 ID</param>
     /// <param name="bForce">是否强制断开连接</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_Disconnect(IntPtr pServer, IntPtr connId, bool bForce);
 
     /// <summary>
@@ -904,7 +966,7 @@ public class Sdk
     /// <param name="dwPeriod">时长（毫秒）</param>
     /// <param name="bForce">是否强制断开连接</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_DisconnectLongConnections(IntPtr pServer, uint dwPeriod, bool bForce);
 
     /// <summary>
@@ -914,7 +976,7 @@ public class Sdk
     /// <param name="dwPeriod">时长（毫秒）</param>
     /// <param name="bForce">是否强制断开连接</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_DisconnectSilenceConnections(IntPtr pServer, uint dwPeriod, bool bForce);
 
     /******************************************************************************/
@@ -925,7 +987,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="enSendPolicy"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Server_SetSendPolicy(IntPtr pServer, SendPolicy enSendPolicy);
 
     /// <summary>
@@ -933,7 +995,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern SendPolicy HP_Server_GetSendPolicy(IntPtr pServer);
 
     /// <summary>
@@ -944,7 +1006,7 @@ public class Sdk
     /// <param name="connId">连接 ID</param>
     /// <param name="pExtra"></param>
     /// <returns>若返回 false 失败则为（无效的连接 ID）</returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_SetConnectionExtra(IntPtr pServer, IntPtr connId, IntPtr pExtra);
 
     /// <summary>
@@ -955,7 +1017,7 @@ public class Sdk
     /// <param name="connId">连接 ID</param>
     /// <param name="pExtra">数据指针</param>
     /// <returns>若返回 false 失败则为（无效的连接 ID）</returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_GetConnectionExtra(IntPtr pServer, IntPtr connId, ref IntPtr pExtra);
 
     /// <summary>
@@ -963,7 +1025,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_IsSecure(IntPtr pServer);
 
 
@@ -972,7 +1034,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_HasStarted(IntPtr pServer);
 
     /// <summary>
@@ -980,7 +1042,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern ServiceState HP_Server_GetState(IntPtr pServer);
 
     /// <summary>
@@ -988,7 +1050,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern SocketError HP_Server_GetLastError(IntPtr pServer);
 
     /// <summary>
@@ -996,7 +1058,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr HP_Server_GetLastErrorDesc(IntPtr pServer);
 
 
@@ -1007,7 +1069,7 @@ public class Sdk
     /// <param name="connId"></param>
     /// <param name="piPending"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_GetPendingDataLength(IntPtr pServer, IntPtr connId, ref int piPending);
 
     /// <summary>
@@ -1017,15 +1079,25 @@ public class Sdk
     /// <param name="dwConnID"></param>
     /// <param name="pbPaused"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_IsPauseReceive(IntPtr pServer, IntPtr dwConnID, ref int pbPaused);
+
+    /// <summary>
+    /// 检测是否有效连接
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="dwConnID"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Server_IsConnected(IntPtr pServer, IntPtr dwConnID);
+
 
     /// <summary>
     /// 获取客户端连接数
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Server_GetConnectionCount(IntPtr pServer);
 
     /// <summary>
@@ -1035,7 +1107,7 @@ public class Sdk
     /// <param name="pIDs"></param>
     /// <param name="pdwCount"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_GetAllConnectionIDs(IntPtr pServer, IntPtr[] pIDs, ref uint pdwCount);
 
     /// <summary>
@@ -1045,7 +1117,7 @@ public class Sdk
     /// <param name="connId"></param>
     /// <param name="pdwPeriod"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_GetConnectPeriod(IntPtr pServer, IntPtr connId, ref uint pdwPeriod);
 
     /// <summary>
@@ -1055,7 +1127,7 @@ public class Sdk
     /// <param name="connId"></param>
     /// <param name="pdwPeriod"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_GetSilencePeriod(IntPtr pServer, IntPtr connId, ref uint pdwPeriod);
 
     /// <summary>
@@ -1066,8 +1138,8 @@ public class Sdk
     /// <param name="piAddressLen"></param>
     /// <param name="pusPort"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
-    public static extern bool HP_Server_GetListenAddress(IntPtr pServer, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Server_GetListenAddress(IntPtr pServer, [MarshalAs(UnmanagedType.LPStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
 
     /// <summary>
     /// 获取某个连接的本地地址信息
@@ -1078,8 +1150,8 @@ public class Sdk
     /// <param name="piAddressLen">传入传出值,大小最好在222.222.222.222的长度以上</param>
     /// <param name="pusPort"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
-    public static extern bool HP_Server_GetLocalAddress(IntPtr pServer, IntPtr connId, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Server_GetLocalAddress(IntPtr pServer, IntPtr connId, [MarshalAs(UnmanagedType.LPStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
 
     /// <summary>
     /// 获取某个连接的远程地址信息
@@ -1090,8 +1162,26 @@ public class Sdk
     /// <param name="piAddressLen">传入传出值,大小最好在222.222.222.222的长度以上</param>
     /// <param name="pusPort"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
-    public static extern bool HP_Server_GetRemoteAddress(IntPtr pServer, IntPtr connId, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Server_GetRemoteAddress(IntPtr pServer, IntPtr connId, [MarshalAs(UnmanagedType.LPStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
+
+
+
+    /// <summary>
+    /// 设置 OnSend 事件同步策略（默认：OSSP_NONE，不同步）
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="syncPolicy"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_Server_SetOnSendSyncPolicy(IntPtr pServer, OnSendSyncPolicy syncPolicy);
+
+    /// <summary>
+    /// 获取 OnSend 事件同步策略
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern OnSendSyncPolicy HP_Server_GetOnSendSyncPolicy(IntPtr pServer);
 
 
     /// <summary>
@@ -1099,7 +1189,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwFreeSocketObjLockTime"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Server_SetFreeSocketObjLockTime(IntPtr pServer, uint dwFreeSocketObjLockTime);
 
     /// <summary>
@@ -1107,7 +1197,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwFreeSocketObjPool"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Server_SetFreeSocketObjPool(IntPtr pServer, uint dwFreeSocketObjPool);
 
     /// <summary>
@@ -1115,7 +1205,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwFreeBufferObjPool"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Server_SetFreeBufferObjPool(IntPtr pServer, uint dwFreeBufferObjPool);
 
     /// <summary>
@@ -1123,7 +1213,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwFreeSocketObjHold"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Server_SetFreeSocketObjHold(IntPtr pServer, uint dwFreeSocketObjHold);
 
     /// <summary>
@@ -1131,7 +1221,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwFreeBufferObjHold"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Server_SetFreeBufferObjHold(IntPtr pServer, uint dwFreeBufferObjHold);
 
     /// <summary>
@@ -1139,7 +1229,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwMaxConnectionCount"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Server_SetMaxConnectionCount(IntPtr pServer, uint dwWMaxConnectionCount);
 
     /// <summary>
@@ -1147,7 +1237,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwWorkerThreadCount"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Server_SetWorkerThreadCount(IntPtr pServer, uint dwWorkerThreadCount);
 
     /// <summary>
@@ -1155,7 +1245,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="bMarkSilence"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Server_SetMarkSilence(IntPtr pServer, bool bMarkSilence);
 
     /// <summary>
@@ -1163,7 +1253,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Server_GetFreeSocketObjLockTime(IntPtr pServer);
 
     /// <summary>
@@ -1171,7 +1261,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Server_GetFreeSocketObjPool(IntPtr pServer);
 
     /// <summary>
@@ -1179,7 +1269,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Server_GetFreeBufferObjPool(IntPtr pServer);
 
     /// <summary>
@@ -1187,7 +1277,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Server_GetFreeSocketObjHold(IntPtr pServer);
 
     /// <summary>
@@ -1195,7 +1285,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Server_GetFreeBufferObjHold(IntPtr pServer);
 
     /// <summary>
@@ -1203,7 +1293,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Server_GetMaxConnectionCount(IntPtr pServer);
 
     /// <summary>
@@ -1211,7 +1301,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Server_GetWorkerThreadCount(IntPtr pServer);
 
     /// <summary>
@@ -1219,7 +1309,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Server_IsMarkSilence(IntPtr pServer);
 
     /**********************************************************************************/
@@ -1235,7 +1325,7 @@ public class Sdk
     /// <param name="pHead">头部附加数据</param>
     /// <param name="pTail">尾部附加数据</param>
     /// <returns>TRUE.成功 FALSE	-- 失败，可通过 Windows API 函数 ::GetLastError() 获取 Windows 错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_TcpServer_SendSmallFile(IntPtr pServer, IntPtr connId, string lpszFileName, ref WSABUF pHead, ref WSABUF pTail);
 
     /**********************************************************************************/
@@ -1246,7 +1336,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwAcceptSocketCount"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpServer_SetAcceptSocketCount(IntPtr pServer, uint dwAcceptSocketCount);
 
     /// <summary>
@@ -1254,7 +1344,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwSocketBufferSize"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpServer_SetSocketBufferSize(IntPtr pServer, uint dwSocketBufferSize);
 
     /// <summary>
@@ -1262,7 +1352,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwSocketListenQueue"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpServer_SetSocketListenQueue(IntPtr pServer, uint dwSocketListenQueue);
 
     /// <summary>
@@ -1270,7 +1360,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwKeepAliveTime"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpServer_SetKeepAliveTime(IntPtr pServer, uint dwKeepAliveTime);
 
     /// <summary>
@@ -1278,7 +1368,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwKeepAliveInterval"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpServer_SetKeepAliveInterval(IntPtr pServer, uint dwKeepAliveInterval);
 
 
@@ -1287,7 +1377,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpServer_GetAcceptSocketCount(IntPtr pServer);
 
     /// <summary>
@@ -1295,7 +1385,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpServer_GetSocketBufferSize(IntPtr pServer);
 
     /// <summary>
@@ -1303,7 +1393,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpServer_GetSocketListenQueue(IntPtr pServer);
 
     /// <summary>
@@ -1311,7 +1401,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpServer_GetKeepAliveTime(IntPtr pServer);
 
     /// <summary>
@@ -1319,7 +1409,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpServer_GetKeepAliveInterval(IntPtr pServer);
 
 
@@ -1331,7 +1421,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwMaxDatagramSize"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpServer_SetMaxDatagramSize(IntPtr pServer, uint dwMaxDatagramSize);
 
     /// <summary>
@@ -1339,7 +1429,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_UdpServer_GetMaxDatagramSize(IntPtr pServer);
 
     /// <summary>
@@ -1347,7 +1437,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwPostReceiveCount"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpServer_SetPostReceiveCount(IntPtr pServer, uint dwPostReceiveCount);
 
     /// <summary>
@@ -1355,7 +1445,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_UdpServer_GetPostReceiveCount(IntPtr pServer);
 
     /// <summary>
@@ -1363,7 +1453,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwMaxDatagramSize"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpServer_SetDetectAttempts(IntPtr pServer, uint dwMaxDatagramSize);
 
     /// <summary>
@@ -1371,7 +1461,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwMaxDatagramSize"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpServer_SetDetectInterval(IntPtr pServer, uint dwMaxDatagramSize);
 
     /// <summary>
@@ -1379,7 +1469,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_UdpServer_GetDetectAttempts(IntPtr pServer);
 
     /// <summary>
@@ -1387,7 +1477,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_UdpServer_GetDetectInterval(IntPtr pServer);
     /******************************************************************************/
     /***************************** Client 组件操作方法 *****************************/
@@ -1398,9 +1488,9 @@ public class Sdk
     /// <param name="pClient"></param>
     /// <param name="pszRemoteAddress">服务端地址</param>
     /// <param name="usPort">服务端端口</param>
-    /// <param name="bAsyncConnect">是否采用异步 Connnect</param>
+    /// <param name="bAsyncConnect">是否采用异步 Connect</param>
     /// <returns>失败，可通过 HP_Client_GetLastError() 获取错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi)]
     public static extern bool HP_Client_Start(IntPtr pClient, string pszRemoteAddress, ushort usPort, bool bAsyncConnect);
 
 
@@ -1413,8 +1503,22 @@ public class Sdk
     /// <param name="bAsyncConnect">是否采用异步 Connect</param>
     /// <param name="lpszBindAddress">绑定地址（默认：nullptr，TcpClient/UdpClient -> 不执行绑定操作，UdpCast 绑定 -> 0.0.0.0）</param>
     /// <returns>失败，可通过 HP_Client_GetLastError() 获取错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi)]
     public static extern bool HP_Client_StartWithBindAddress(IntPtr pClient, string lpszRemoteAddress, ushort usPort, bool bAsyncConnect, string lpszBindAddress);
+
+    /// <summary>
+    /// 名称：启动通信组件（并指定绑定地址）
+    /// 描述：启动客户端通信组件并连接服务端，启动完成后可开始收发数据
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="lpszRemoteAddress">服务端地址</param>
+    /// <param name="usPort">服务端端口</param>
+    /// <param name="bAsyncConnect">是否采用异步 Connect</param>
+    /// <param name="lpszBindAddress">绑定地址（默认：nullptr，TcpClient/UdpClient -> 不执行绑定操作，UdpCast 绑定 -> 0.0.0.0）</param>
+    /// <param name="usLocalPort">本地端口（默认：0）</param>
+    /// <returns>失败，可通过 HP_Client_GetLastError() 获取错误代码</returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi)]
+    public static extern bool HP_Client_StartWithBindAddressAndLocalPort(IntPtr pClient, string lpszRemoteAddress, ushort usPort, bool bAsyncConnect, string lpszBindAddress, ushort usLocalPort);
 
 
     /// <summary>
@@ -1422,7 +1526,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns>失败，可通过 HP_Client_GetLastError() 获取错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Client_Stop(IntPtr pClient);
 
     /// <summary>
@@ -1444,7 +1548,7 @@ public class Sdk
     /// <param name="pBuffer">发送数据缓冲区</param>
     /// <param name="length">发送数据长度</param>
     /// <returns>失败，可通过 HP_Client_GetLastError() 获取错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Client_Send(IntPtr pClient, IntPtr pBuffer, int length);
 
     /// <summary>
@@ -1466,7 +1570,7 @@ public class Sdk
     /// <param name="length"></param>
     /// <param name="iOffset">针对pBuffer的偏移</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Client_SendPart(IntPtr pClient, IntPtr pBuffer, int length, int iOffset);
 
 
@@ -1480,7 +1584,7 @@ public class Sdk
     /// <param name="pBuffers">发送缓冲区数组</param>
     /// <param name="iCount">发送缓冲区数目</param>
     /// <returns>TRUE.成功,FALSE.失败，可通过 Windows API 函数 ::GetLastError() 获取 Windows 错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Client_SendPackets(IntPtr pClient, WSABUF[] pBuffers, int iCount);
 
 
@@ -1491,7 +1595,7 @@ public class Sdk
     /// <param name="pClient">TRUE - 暂停, FALSE - 恢复</param>
     /// <param name="bPause">TRUE - 暂停, FALSE - 恢复</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Client_PauseReceive(IntPtr pClient, int bPause);
 
     /******************************************************************************/
@@ -1502,7 +1606,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <param name="pExtra"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Client_SetExtra(IntPtr pClient, IntPtr pExtra);
 
 
@@ -1511,7 +1615,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr HP_Client_GetExtra(IntPtr pClient);
 
 
@@ -1520,7 +1624,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Client_IsSecure(IntPtr pClient);
 
 
@@ -1529,7 +1633,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Client_HasStarted(IntPtr pClient);
 
     /// <summary>
@@ -1537,7 +1641,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern ServiceState HP_Client_GetState(IntPtr pClient);
 
     /// <summary>
@@ -1545,7 +1649,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern SocketError HP_Client_GetLastError(IntPtr pClient);
 
     /// <summary>
@@ -1553,7 +1657,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr HP_Client_GetLastErrorDesc(IntPtr pClient);
 
     /// <summary>
@@ -1561,7 +1665,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr HP_Client_GetConnectionID(IntPtr pClient);
 
     /// <summary>
@@ -1572,8 +1676,8 @@ public class Sdk
     /// <param name="piAddressLen"></param>
     /// <param name="pusPort"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
-    public static extern bool HP_Client_GetLocalAddress(IntPtr pClient, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Client_GetLocalAddress(IntPtr pClient, [MarshalAs(UnmanagedType.LPStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
 
     /// <summary>
     /// 获取连接的远程主机信息
@@ -1584,8 +1688,8 @@ public class Sdk
     /// <param name="pusPort"></param>
     /// <returns></returns>
 
-    [DllImport(HPSOCKET_DLL_PATH)]
-    public static extern bool HP_Client_GetRemoteHost(IntPtr pClient, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder lpszHost, ref int piHostLen, ref ushort pusPort);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Client_GetRemoteHost(IntPtr pClient, [MarshalAs(UnmanagedType.LPStr)] StringBuilder lpszHost, ref int piHostLen, ref ushort pusPort);
 
 
     /// <summary>
@@ -1594,7 +1698,7 @@ public class Sdk
     /// <param name="pClient"></param>
     /// <param name="piPending"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Client_GetPendingDataLength(IntPtr pClient, ref int piPending);
 
     /// <summary>
@@ -1603,15 +1707,24 @@ public class Sdk
     /// <param name="pClient"></param>
     /// <param name="pbPaused"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Client_IsPauseReceive(IntPtr pClient, ref int pbPaused);
+
+    /// <summary>
+    /// 检测是否有效连接
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Client_IsConnected(IntPtr pClient);
+
 
     /// <summary>
     /// 设置内存块缓存池大小（通常设置为 -> PUSH 模型：5 - 10；PULL 模型：10 - 20 ）
     /// </summary>
     /// <param name="pClient"></param>
     /// <param name="dwFreeBufferPoolSize"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Client_SetFreeBufferPoolSize(IntPtr pClient, uint dwFreeBufferPoolSize);
 
     /// <summary>
@@ -1619,21 +1732,21 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <param name="dwFreeBufferPoolHold"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Client_SetFreeBufferPoolHold(IntPtr pClient, uint dwFreeBufferPoolHold);
 
     /// <summary>
     /// 获取内存块缓存池大小
     /// </summary>
     /// <param name="pClient"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Client_GetFreeBufferPoolSize(IntPtr pClient);
 
     /// <summary>
     /// 获取内存块缓存池回收阀值
     /// </summary>
     /// <param name="pClient"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Client_GetFreeBufferPoolHold(IntPtr pClient);
     /**********************************************************************************/
     /***************************** TCP Client 操作方法 *****************************/
@@ -1647,7 +1760,7 @@ public class Sdk
     /// <param name="pHead">头部附加数据</param>
     /// <param name="pTail">尾部附加数据</param>
     /// <returns>TRUE.成功 FALSE	-- 失败，可通过 Windows API 函数 ::GetLastError() 获取 Windows 错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_TcpClient_SendSmallFile(IntPtr pClient, string lpszFileName, ref WSABUF pHead, ref WSABUF pTail);
 
     /**********************************************************************************/
@@ -1658,7 +1771,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <param name="dwSocketBufferSize"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpClient_SetSocketBufferSize(IntPtr pClient, uint dwSocketBufferSize);
 
     /// <summary>
@@ -1666,7 +1779,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <param name="dwKeepAliveTime"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpClient_SetKeepAliveTime(IntPtr pClient, uint dwKeepAliveTime);
 
     /// <summary>
@@ -1674,7 +1787,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <param name="dwKeepAliveInterval"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpClient_SetKeepAliveInterval(IntPtr pClient, uint dwKeepAliveInterval);
 
     /// <summary>
@@ -1682,7 +1795,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpClient_GetSocketBufferSize(IntPtr pClient);
 
     /// <summary>
@@ -1690,7 +1803,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpClient_GetKeepAliveTime(IntPtr pClient);
 
     /// <summary>
@@ -1698,7 +1811,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpClient_GetKeepAliveInterval(IntPtr pClient);
 
     /**********************************************************************************/
@@ -1709,7 +1822,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <param name="dwMaxDatagramSize"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpClient_SetMaxDatagramSize(IntPtr pClient, uint dwMaxDatagramSize);
 
     /// <summary>
@@ -1717,7 +1830,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_UdpClient_GetMaxDatagramSize(IntPtr pClient);
 
     /// <summary>
@@ -1725,7 +1838,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <param name="dwDetectAttempts"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpClient_SetDetectAttempts(IntPtr pClient, uint dwDetectAttempts);
 
     /// <summary>
@@ -1733,7 +1846,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <param name="dwDetectInterval"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpClient_SetDetectInterval(IntPtr pClient, uint dwDetectInterval);
 
     /// <summary>
@@ -1741,7 +1854,7 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_UdpClient_GetDetectAttempts(IntPtr pClient);
 
     /// <summary>
@@ -1749,19 +1862,19 @@ public class Sdk
     /// </summary>
     /// <param name="pClient"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_UdpClient_GetDetectInterval(IntPtr pClient);
 
 
     /**********************************************************************************/
     /****************************** UDP Cast 属性访问方法 ******************************/
-    
+
     /// <summary>
     /// 设置数据报文最大长度（建议在局域网环境下不超过 1472 字节，在广域网环境下不超过 548 字节
     /// </summary>
     /// <param name="pCast"></param>
     /// <param name="dwMaxDatagramSize"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpCast_SetMaxDatagramSize(IntPtr pCast, uint dwMaxDatagramSize);
 
     /// <summary>
@@ -1769,9 +1882,9 @@ public class Sdk
     /// </summary>
     /// <param name="pCast"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_UdpCast_GetMaxDatagramSize(IntPtr pCast);
-    
+
     /// <summary>
     /// 获取当前数据报的远程地址信息（通常在 OnReceive 事件中调用）
     /// </summary>
@@ -1780,15 +1893,15 @@ public class Sdk
     /// <param name="piAddressLen"></param>
     /// <param name="pusPort"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
-    public static extern bool HP_UdpCast_GetRemoteAddress(IntPtr pCast, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder lpszAddress, int piAddressLen, ref ushort pusPort);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_UdpCast_GetRemoteAddress(IntPtr pCast, [MarshalAs(UnmanagedType.LPStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
 
     /// <summary>
     /// 设置是否启用地址重用机制（默认：不启用）
     /// </summary>
     /// <param name="pCast"></param>
     /// <param name="bReuseAddress"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpCast_SetReuseAddress(IntPtr pCast, bool bReuseAddress);
 
     /// <summary>
@@ -1796,7 +1909,7 @@ public class Sdk
     /// </summary>
     /// <param name="pCast"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_UdpCast_IsReuseAddress(IntPtr pCast);
 
     /// <summary>
@@ -1804,7 +1917,7 @@ public class Sdk
     /// </summary>
     /// <param name="pCast"></param>
     /// <param name="enCastMode"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpCast_SetCastMode(IntPtr pCast, CastMode enCastMode);
 
     /// <summary>
@@ -1812,7 +1925,7 @@ public class Sdk
     /// </summary>
     /// <param name="pCast"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern CastMode HP_UdpCast_GetCastMode(IntPtr pCast);
 
     /// <summary>
@@ -1820,7 +1933,7 @@ public class Sdk
     /// </summary>
     /// <param name="pCast"></param>
     /// <param name="iMCTtl"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpCast_SetMultiCastTtl(IntPtr pCast, int iMCTtl);
 
     /// <summary>
@@ -1828,7 +1941,7 @@ public class Sdk
     /// </summary>
     /// <param name="pCast"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int HP_UdpCast_GetMultiCastTtl(IntPtr pCast);
 
     /// <summary>
@@ -1836,7 +1949,7 @@ public class Sdk
     /// </summary>
     /// <param name="pCast"></param>
     /// <param name="bMCLoop"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_UdpCast_SetMultiCastLoop(IntPtr pCast, bool bMCLoop);
 
     /// <summary>
@@ -1844,7 +1957,7 @@ public class Sdk
     /// </summary>
     /// <param name="pCast"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_UdpCast_IsMultiCastLoop(IntPtr pCast);
 
     /**************************************************************************/
@@ -1858,7 +1971,7 @@ public class Sdk
     /// <param name="pszBindAddress">监听地址</param>
     /// <param name="bAsyncConnect">是否采用异步 Connect</param>
     /// <returns>失败，可通过 GetLastError() 获取错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi)]
     public static extern bool HP_Agent_Start(IntPtr pAgent, string pszBindAddress, bool bAsyncConnect);
 
     /// <summary>
@@ -1867,7 +1980,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns>-- 失败，可通过 GetLastError() 获取错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_Stop(IntPtr pAgent);
 
     /// <summary>
@@ -1879,7 +1992,7 @@ public class Sdk
     /// <param name="usPort">服务端端口</param>
     /// <param name="pconnId">传出连接 ID</param>
     /// <returns>失败，可通过 SYS_GetLastError() 获取 Windows 错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_Connect(IntPtr pAgent, string pszBindAddress, ushort usPort, ref IntPtr pconnId);
 
     /// <summary>
@@ -1892,8 +2005,67 @@ public class Sdk
     /// <param name="pdwConnID">传出连接</param>
     /// <param name="pExtra">连接附加数据（默认：nullptr）</param>
     /// <returns>失败，可通过函数 SYS_GetLastError() 获取 Windows 错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_ConnectWithExtra(IntPtr pAgent, string lpszRemoteAddress, ushort usPort, ref IntPtr pdwConnID, IntPtr pExtra);
+
+    /// <summary>
+    /// 名称：连接服务器
+    /// 描述：连接服务器，连接成功后 IAgentListener 会接收到 OnConnect() / OnHandShake() 事件
+    /// </summary>
+    /// <param name="pAgent"></param>
+    /// <param name="lpszRemoteAddress">服务端地址</param>
+    /// <param name="usPort">服务端端口</param>
+    /// <param name="pdwConnID">连接 ID（默认：nullptr，不获取连接 ID）</param>
+    /// <param name="usLocalPort">本地端口（默认：0）</param>
+    /// <returns>失败，可通过函数 SYS_GetLastError() 获取 Windows 错误代码</returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Agent_ConnectWithLocalPort(IntPtr pAgent, string lpszRemoteAddress, ushort usPort, ref IntPtr pdwConnID, ushort usLocalPort);
+
+
+    /// <summary>
+    /// 名称：连接服务器
+    /// 描述：连接服务器，连接成功后 IAgentListener 会接收到 OnConnect() / OnHandShake() 事件
+    /// </summary>
+    /// <param name="pAgent"></param>
+    /// <param name="lpszRemoteAddress">服务端地址</param>
+    /// <param name="usPort">服务端端口</param>
+    /// <param name="pdwConnID">连接 ID（默认：nullptr，不获取连接 ID）</param>
+    /// <param name="lpszLocalAddress">本地地址（默认：nullptr，使用 Start() 方法中绑定的地址）</param>
+    /// <returns>失败，可通过函数 SYS_GetLastError() 获取 Windows 错误代码</returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Agent_ConnectWithLocalAddress(IntPtr pAgent, string lpszRemoteAddress, ushort usPort, ref IntPtr pdwConnID, string lpszLocalAddress);
+
+
+    /// <summary>
+    /// 名称：连接服务器
+    /// 描述：连接服务器，连接成功后 IAgentListener 会接收到 OnConnect() / OnHandShake() 事件
+    /// </summary>
+    /// <param name="pAgent"></param>
+    /// <param name="lpszRemoteAddress">服务端地址</param>
+    /// <param name="usPort">服务端端口</param>
+    /// <param name="pdwConnID">连接 ID（默认：nullptr，不获取连接 ID）</param>
+    /// <param name="pExtra">连接附加数据（默认：nullptr）</param>
+    /// <param name="usLocalPort">本地端口（默认：0）</param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Agent_ConnectWithExtraAndLocalPort(IntPtr pAgent, string lpszRemoteAddress, ushort usPort, ref IntPtr pdwConnID, IntPtr pExtra, ushort usLocalPort);
+
+
+    /// <summary>
+    /// 名称：连接服务器
+    /// 描述：连接服务器，连接成功后 IAgentListener 会接收到 OnConnect() / OnHandShake() 事件
+    /// </summary>
+    /// <param name="pAgent"></param>
+    /// <param name="lpszRemoteAddress">服务端地址</param>
+    /// <param name="usPort">服务端端口</param>
+    /// <param name="pdwConnID">连接 ID（默认：nullptr，不获取连接 ID）</param>
+    /// <param name="pExtra">连接附加数据（默认：nullptr）</param>
+    /// <param name="usLocalPort">本地端口（默认：0）</param>
+    /// <param name="lpszLocalAddress">本地地址（默认：nullptr，使用 Start() 方法中绑定的地址）</param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Agent_ConnectWithExtraAndLocalAddressPort(IntPtr pAgent, string lpszRemoteAddress, ushort usPort, ref IntPtr pdwConnID, IntPtr pExtra, ushort usLocalPort, string lpszLocalAddress);
+
 
     /// <summary>
     /// 发送数据
@@ -1916,7 +2088,7 @@ public class Sdk
     /// <param name="pBuffer">发送数据缓冲区</param>
     /// <param name="length">发送数据长度</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_Send(IntPtr pAgent, IntPtr connId, IntPtr pBuffer, int length);
 
     /// <summary>
@@ -1929,7 +2101,7 @@ public class Sdk
     /// <param name="length"></param>
     /// <param name="iOffset">针对pBuffer的偏移</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_SendPart(IntPtr pAgent, IntPtr connId, byte[] pBuffer, int length, int iOffset);
 
     /// <summary>
@@ -1942,7 +2114,7 @@ public class Sdk
     /// <param name="length"></param>
     /// <param name="iOffset">针对pBuffer的偏移</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_SendPart(IntPtr pAgent, IntPtr connId, IntPtr pBuffer, int length, int iOffset);
 
 
@@ -1957,7 +2129,7 @@ public class Sdk
     /// <param name="pBuffers">发送缓冲区数组</param>
     /// <param name="iCount">发送缓冲区数目</param>
     /// <returns>TRUE.成功,FALSE	.失败，可通过 Windows API 函数 ::GetLastError() 获取 Windows 错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_SendPackets(IntPtr pAgent, IntPtr connId, WSABUF[] pBuffers, int iCount);
 
     /// <summary>
@@ -1968,7 +2140,7 @@ public class Sdk
     /// <param name="dwConnID"></param>
     /// <param name="bPause">TRUE - 暂停, FALSE - 恢复</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_PauseReceive(IntPtr pAgent, IntPtr dwConnID, bool bPause);
 
     /// <summary>
@@ -1978,7 +2150,7 @@ public class Sdk
     /// <param name="connId">连接 ID</param>
     /// <param name="bForce">是否强制断开连接</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_Disconnect(IntPtr pAgent, IntPtr connId, bool bForce);
 
     /// <summary>
@@ -1988,7 +2160,7 @@ public class Sdk
     /// <param name="dwPeriod">时长（毫秒）</param>
     /// <param name="bForce">是否强制断开连接</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_DisconnectLongConnections(IntPtr pAgent, uint dwPeriod, bool bForce);
 
     /// <summary>
@@ -1998,7 +2170,7 @@ public class Sdk
     /// <param name="dwPeriod">时长（毫秒）</param>
     /// <param name="bForce">是否强制断开连接</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_DisconnectSilenceConnections(IntPtr pAgent, uint dwPeriod, bool bForce);
 
     /******************************************************************************/
@@ -2014,7 +2186,7 @@ public class Sdk
     /// <param name="pHead">头部附加数据</param>
     /// <param name="pTail">尾部附加数据</param>
     /// <returns>TRUE.成功 FALSE	-- 失败，可通过 Windows API 函数 ::GetLastError() 获取 Windows 错误代码</returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_TcpAgent_SendSmallFile(IntPtr pAgent, IntPtr connId, string lpszFileName, ref WSABUF pHead, ref WSABUF pTail);
 
     /******************************************************************************/
@@ -2025,7 +2197,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="enSendPolicy"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Agent_SetSendPolicy(IntPtr pAgent, SendPolicy enSendPolicy);
 
     /// <summary>
@@ -2033,8 +2205,26 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern SendPolicy HP_Agent_GetSendPolicy(IntPtr pAgent);
+
+
+    /// <summary>
+    /// 获取 OnSend 事件同步策略
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern OnSendSyncPolicy HP_Agent_GetOnSendSyncPolicy(IntPtr pAgent);
+
+    /// <summary>
+    /// 设置 OnSend 事件同步策略（默认：OSSP_NONE，不同步
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="syncPolicy"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_Agent_SetOnSendSyncPolicy(IntPtr pAgent, OnSendSyncPolicy syncPolicy);
+
 
     /// <summary>
     /// 设置连接的附加数据
@@ -2044,7 +2234,7 @@ public class Sdk
     /// <param name="connId">连接 ID</param>
     /// <param name="pExtra">数据</param>
     /// <returns>FALSE    -- 失败（无效的连接 ID）</returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_SetConnectionExtra(IntPtr pAgent, IntPtr connId, IntPtr pExtra);
 
     /// <summary>
@@ -2055,7 +2245,7 @@ public class Sdk
     /// <param name="connId"></param>
     /// <param name="pExtra"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_GetConnectionExtra(IntPtr pAgent, IntPtr connId, ref IntPtr pExtra);
 
     /// <summary>
@@ -2063,7 +2253,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_IsSecure(IntPtr pAgent);
 
     /// <summary>
@@ -2071,7 +2261,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_HasStarted(IntPtr pAgent);
 
     /// <summary>
@@ -2079,7 +2269,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern ServiceState HP_Agent_GetState(IntPtr pAgent);
 
     /// <summary>
@@ -2087,7 +2277,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Agent_GetConnectionCount(IntPtr pAgent);
 
     /// <summary>
@@ -2097,7 +2287,7 @@ public class Sdk
     /// <param name="pIDs"></param>
     /// <param name="pdwCount"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_GetAllConnectionIDs(IntPtr pAgent, IntPtr[] pIDs, ref uint pdwCount);
 
     /// <summary>
@@ -2107,7 +2297,7 @@ public class Sdk
     /// <param name="connId"></param>
     /// <param name="pdwPeriod"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_GetConnectPeriod(IntPtr pAgent, IntPtr connId, ref uint pdwPeriod);
 
     /// <summary>
@@ -2117,7 +2307,7 @@ public class Sdk
     /// <param name="connId"></param>
     /// <param name="pdwPeriod"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_GetSilencePeriod(IntPtr pAgent, IntPtr connId, ref uint pdwPeriod);
 
     /// <summary>
@@ -2129,8 +2319,8 @@ public class Sdk
     /// <param name="piAddressLen"></param>
     /// <param name="pusPort"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
-    public static extern bool HP_Agent_GetLocalAddress(IntPtr pAgent, IntPtr connId, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Agent_GetLocalAddress(IntPtr pAgent, IntPtr connId, [MarshalAs(UnmanagedType.LPStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
 
     /// <summary>
     /// 获取某个连接的远程地址信息
@@ -2141,8 +2331,8 @@ public class Sdk
     /// <param name="piAddressLen"></param>
     /// <param name="pusPort"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
-    public static extern bool HP_Agent_GetRemoteAddress(IntPtr pAgent, IntPtr connId, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Agent_GetRemoteAddress(IntPtr pAgent, IntPtr connId, [MarshalAs(UnmanagedType.LPStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
 
     /// <summary>
     /// 获取某个连接的远程主机信息
@@ -2153,8 +2343,8 @@ public class Sdk
     /// <param name="piHostLen"></param>
     /// <param name="pusPort"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
-    public static extern bool HP_Agent_GetRemoteHost(IntPtr pAgent, IntPtr dwConnID, [MarshalAs(UnmanagedType.LPWStr)]StringBuilder lpszAddress, ref int piHostLen, ref ushort pusPort);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Agent_GetRemoteHost(IntPtr pAgent, IntPtr dwConnID, [MarshalAs(UnmanagedType.LPStr)]StringBuilder lpszAddress, ref int piHostLen, ref ushort pusPort);
 
 
     /// <summary>
@@ -2162,7 +2352,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern SocketError HP_Agent_GetLastError(IntPtr pAgent);
 
     /// <summary>
@@ -2170,7 +2360,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr HP_Agent_GetLastErrorDesc(IntPtr pAgent);
 
     /// <summary>
@@ -2179,7 +2369,7 @@ public class Sdk
     /// <param name="pAgent"></param>
     /// <param name="connId"></param>
     /// <param name="piPending"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_GetPendingDataLength(IntPtr pAgent, IntPtr connId, ref int piPending);
 
     /// <summary>
@@ -2189,8 +2379,17 @@ public class Sdk
     /// <param name="dwConnID"></param>
     /// <param name="pbPaused"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_IsPauseReceive(IntPtr pAgent, IntPtr dwConnID, ref int pbPaused);
+
+    /// <summary>
+    /// 检测是否有效连接
+    /// </summary>
+    /// <param name="pAgent"></param>
+    /// <param name="dwConnID"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_Agent_IsConnected(IntPtr pAgent, IntPtr dwConnID);
 
 
     /// <summary>
@@ -2198,7 +2397,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="dwFreeSocketObjLockTime"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Agent_SetFreeSocketObjLockTime(IntPtr pAgent, uint dwFreeSocketObjLockTime);
 
     /// <summary>
@@ -2206,7 +2405,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="dwFreeSocketObjPool"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Agent_SetFreeSocketObjPool(IntPtr pAgent, uint dwFreeSocketObjPool);
 
     /// <summary>
@@ -2214,7 +2413,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="dwFreeBufferObjPool"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Agent_SetFreeBufferObjPool(IntPtr pAgent, uint dwFreeBufferObjPool);
 
     /// <summary>
@@ -2222,7 +2421,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="dwFreeSocketObjHold"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Agent_SetFreeSocketObjHold(IntPtr pAgent, uint dwFreeSocketObjHold);
 
     /// <summary>
@@ -2230,7 +2429,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="dwFreeBufferObjHold"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Agent_SetFreeBufferObjHold(IntPtr pAgent, uint dwFreeBufferObjHold);
 
     /// <summary>
@@ -2238,7 +2437,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="dwMaxConnectionCount"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Agent_SetMaxConnectionCount(IntPtr pAgent, uint dwMaxConnectionCount);
 
     /// <summary>
@@ -2246,7 +2445,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="dwWorkerThreadCount"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Agent_SetWorkerThreadCount(IntPtr pAgent, uint dwWorkerThreadCount);
 
     /// <summary>
@@ -2254,7 +2453,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="bMarkSilence"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_Agent_SetMarkSilence(IntPtr pAgent, bool bMarkSilence);
 
     /// <summary>
@@ -2262,7 +2461,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Agent_GetFreeSocketObjLockTime(IntPtr pAgent);
 
     /// <summary>
@@ -2270,7 +2469,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Agent_GetFreeSocketObjPool(IntPtr pAgent);
 
     /// <summary>
@@ -2278,7 +2477,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Agent_GetFreeBufferObjPool(IntPtr pAgent);
 
     /// <summary>
@@ -2286,7 +2485,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Agent_GetFreeSocketObjHold(IntPtr pAgent);
 
     /// <summary>
@@ -2294,7 +2493,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Agent_GetFreeBufferObjHold(IntPtr pAgent);
 
     /// <summary>
@@ -2302,7 +2501,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Agent_GetMaxConnectionCount(IntPtr pAgent);
 
     /// <summary>
@@ -2310,7 +2509,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_Agent_GetWorkerThreadCount(IntPtr pAgent);
 
     /// <summary>
@@ -2318,7 +2517,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_Agent_IsMarkSilence(IntPtr pAgent);
 
     /**********************************************************************************/
@@ -2329,7 +2528,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="bReuseAddress"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpAgent_SetReuseAddress(IntPtr pAgent, bool bReuseAddress);
 
     /// <summary>
@@ -2337,7 +2536,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool HP_TcpAgent_IsReuseAddress(IntPtr pAgent);
 
     /// <summary>
@@ -2345,7 +2544,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="dwSocketBufferSize"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpAgent_SetSocketBufferSize(IntPtr pAgent, uint dwSocketBufferSize);
 
     /// <summary>
@@ -2353,7 +2552,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="dwKeepAliveTime"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpAgent_SetKeepAliveTime(IntPtr pAgent, uint dwKeepAliveTime);
 
     /// <summary>
@@ -2361,7 +2560,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <param name="dwKeepAliveInterval"></param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpAgent_SetKeepAliveInterval(IntPtr pAgent, uint dwKeepAliveInterval);
 
     /// <summary>
@@ -2369,7 +2568,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpAgent_GetSocketBufferSize(IntPtr pAgent);
 
     /// <summary>
@@ -2377,7 +2576,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpAgent_GetKeepAliveTime(IntPtr pAgent);
 
     /// <summary>
@@ -2385,7 +2584,7 @@ public class Sdk
     /// </summary>
     /// <param name="pAgent"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpAgent_GetKeepAliveInterval(IntPtr pAgent);
 
     /***************************************************************************************/
@@ -2400,7 +2599,7 @@ public class Sdk
     /// <param name="pBuffer">数据抓取缓冲区</param>
     /// <param name="length">抓取数据长度</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern FetchResult HP_TcpPullServer_Fetch(IntPtr pServer, IntPtr connId, IntPtr pBuffer, int length);
 
     /// <summary>
@@ -2412,7 +2611,7 @@ public class Sdk
     /// <param name="pBuffer">窥探缓冲区</param>
     /// <param name="length">窥探数据长度</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern FetchResult HP_TcpPullServer_Peek(IntPtr pServer, IntPtr connId, IntPtr pBuffer, int length);
 
     /***************************************************************************************/
@@ -2430,7 +2629,7 @@ public class Sdk
     /// <param name="pBuffer">数据抓取缓冲区</param>
     /// <param name="length">抓取数据长度</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern FetchResult HP_TcpPullClient_Fetch(IntPtr pClient, IntPtr pBuffer, int length);
 
     /// <summary>
@@ -2442,7 +2641,7 @@ public class Sdk
     /// <param name="pBuffer">数据抓取缓冲区</param>
     /// <param name="length">抓取数据长度</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern FetchResult HP_TcpPullClient_Peek(IntPtr pClient, IntPtr pBuffer, int length);
 
     /***************************************************************************************/
@@ -2460,7 +2659,7 @@ public class Sdk
     /// <param name="pBuffer">数据抓取缓冲区</param>
     /// <param name="length">抓取数据长度</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern FetchResult HP_TcpPullAgent_Fetch(IntPtr pAgent, IntPtr connId, IntPtr pBuffer, int length);
 
     /// <summary>
@@ -2472,7 +2671,7 @@ public class Sdk
     /// <param name="pBuffer">数据抓取缓冲区</param>
     /// <param name="length">抓取数据长度</param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern FetchResult HP_TcpPullAgent_Peek(IntPtr pAgent, IntPtr connId, IntPtr pBuffer, int length);
 
     /***************************************************************************************/
@@ -2491,7 +2690,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwMaxPackSize">有效数据包最大长度不能超过 4194303/0x3FFFFF 字节，默认：262144/0x40000</param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpPackServer_SetMaxPackSize(IntPtr pServer, uint dwMaxPackSize);
 
     /// <summary>
@@ -2499,7 +2698,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="usPackHeaderFlag">有效包头标识取值范围 0 ~ 1023/0x3FF，当包头标识为 0 时不校验包头，默认：0</param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpPackServer_SetPackHeaderFlag(IntPtr pServer, ushort usPackHeaderFlag);
 
     /// <summary>
@@ -2507,7 +2706,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpPackServer_GetMaxPackSize(IntPtr pServer);
 
     /// <summary>
@@ -2515,7 +2714,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern ushort HP_TcpPackServer_GetPackHeaderFlag(IntPtr pServer);
     /***************************************************************************************/
     /***************************** TCP Pack Agent 组件操作方法 *****************************/
@@ -2528,7 +2727,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwMaxPackSize">有效数据包最大长度不能超过 524287/0x7FFFF 字节，默认：262144/0x40000</param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpPackAgent_SetMaxPackSize(IntPtr pAgent, uint dwMaxPackSize);
 
     /// <summary>
@@ -2536,7 +2735,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="usPackHeaderFlag">有效包头标识取值范围 0 ~ 8191/0x1FFF，当包头标识为 0 时不校验包头，默认：0</param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpPackAgent_SetPackHeaderFlag(IntPtr pAgent, ushort usPackHeaderFlag);
 
     /// <summary>
@@ -2544,7 +2743,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpPackAgent_GetMaxPackSize(IntPtr pAgent);
 
     /// <summary>
@@ -2552,7 +2751,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern ushort HP_TcpPackAgent_GetPackHeaderFlag(IntPtr pAgent);
     /***************************************************************************************/
     /***************************** TCP Pack Client 组件操作方法 *****************************/
@@ -2564,7 +2763,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="dwMaxPackSize">有效数据包最大长度不能超过 524287/0x7FFFF 字节，默认：262144/0x40000</param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpPackClient_SetMaxPackSize(IntPtr pClient, uint dwMaxPackSize);
 
     /// <summary>
@@ -2572,7 +2771,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <param name="usPackHeaderFlag">有效包头标识取值范围 0 ~ 8191/0x1FFF，当包头标识为 0 时不校验包头，默认：0</param>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern void HP_TcpPackClient_SetPackHeaderFlag(IntPtr pClient, ushort usPackHeaderFlag);
 
     /// <summary>
@@ -2580,7 +2779,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_TcpPackClient_GetMaxPackSize(IntPtr pClient);
 
     /// <summary>
@@ -2588,7 +2787,7 @@ public class Sdk
     /// </summary>
     /// <param name="pServer"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern ushort HP_TcpPackClient_GetPackHeaderFlag(IntPtr pClient);
     /***************************************************************************************/
     /*************************************** 其它方法 ***************************************/
@@ -2597,7 +2796,7 @@ public class Sdk
     /// 获取 HPSocket 版本号（4 个字节分别为：主版本号，子版本号，修正版本号，构建编号）
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern uint HP_GetHPSocketVersion();
 
     /// <summary>
@@ -2627,7 +2826,7 @@ public class Sdk
     /// </summary>
     /// <param name="enCode"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr HP_GetSocketErrorDesc(SocketError enCode);
 
     /// <summary>
@@ -2643,7 +2842,7 @@ public class Sdk
     /// 调用系统的 ::WSAGetLastError() 方法获取通信错误代码
     /// </summary>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int SYS_WSAGetLastError();
 
     /// <summary>
@@ -2655,7 +2854,7 @@ public class Sdk
     /// <param name="val"></param>
     /// <param name="len"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int SYS_SetSocketOption(IntPtr sock, int level, int name, IntPtr val, int len);
 
     /// <summary>
@@ -2667,7 +2866,7 @@ public class Sdk
     /// <param name="val"></param>
     /// <param name="len"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int SYS_GetSocketOption(IntPtr sock, int level, int name, IntPtr val, ref int len);
 
     /// <summary>
@@ -2677,7 +2876,7 @@ public class Sdk
     /// <param name="cmd"></param>
     /// <param name="arg"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int SYS_IoctlSocket(IntPtr sock, long cmd, IntPtr arg);
 
     /// <summary>
@@ -2691,7 +2890,7 @@ public class Sdk
     /// <param name="cbOutBuffer"></param>
     /// <param name="lpcbBytesReturned"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, SetLastError = true)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int SYS_WSAIoctl(IntPtr sock, uint dwIoControlCode, IntPtr lpvInBuffer, uint cbInBuffer,
                                           IntPtr lpvOutBuffer, uint cbOutBuffer, uint lpcbBytesReturned);
 
@@ -2701,7 +2900,7 @@ public class Sdk
     /// <param name="sock"></param>
     /// <param name="bNoDelay"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int SYS_SSO_NoDelay(IntPtr sock, bool bNoDelay);
 
 
@@ -2711,7 +2910,7 @@ public class Sdk
     /// <param name="sock"></param>
     /// <param name="bDont"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int SYS_SSO_DontLinger(IntPtr sock, bool bDont);
 
     /// <summary>
@@ -2721,7 +2920,7 @@ public class Sdk
     /// <param name="l_onoff"></param>
     /// <param name="l_linger"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int SYS_SSO_Linger(IntPtr sock, ushort l_onoff, ushort l_linger);
 
 
@@ -2731,7 +2930,7 @@ public class Sdk
     /// <param name="sock"></param>
     /// <param name="size"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int SYS_SSO_RecvBuffSize(IntPtr sock, int size);
 
     /// <summary>
@@ -2740,7 +2939,7 @@ public class Sdk
     /// <param name="sock"></param>
     /// <param name="size"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int SYS_SSO_SendBuffSize(IntPtr sock, int size);
 
     /// <summary>
@@ -2749,7 +2948,7 @@ public class Sdk
     /// <param name="sock"></param>
     /// <param name="bReuse"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern int SYS_SSO_ReuseAddress(IntPtr sock, bool bReuse);
 
     /// <summary>
@@ -2760,8 +2959,8 @@ public class Sdk
     /// <param name="piAddressLen">传入传出值,大小最好在222.222.222.222的长度以上</param>
     /// <param name="pusPort"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
-    public static extern bool SYS_GetSocketLocalAddress(IntPtr pSocket, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool SYS_GetSocketLocalAddress(IntPtr pSocket, [MarshalAs(UnmanagedType.LPStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
 
     /// <summary>
     /// 获取 SOCKET 远程地址信息
@@ -2771,8 +2970,8 @@ public class Sdk
     /// <param name="piAddressLen">传入传出值,大小最好在222.222.222.222的长度以上</param>
     /// <param name="pusPort"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
-    public static extern bool SYS_GetSocketRemoteAddress(IntPtr pSocket, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool SYS_GetSocketRemoteAddress(IntPtr pSocket, [MarshalAs(UnmanagedType.LPStr)] StringBuilder lpszAddress, ref int piAddressLen, ref ushort pusPort);
 
 
     /// <summary>
@@ -2786,7 +2985,7 @@ public class Sdk
     /// <param name="lpppIPAddr"></param>
     /// <param name="piIPAddrCount"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi)]
     public static extern bool SYS_EnumHostIPAddresses(string lpszHost, IPAddrType enType, ref IntPtr lpppIPAddr, ref int piIPAddrCount);
 
 
@@ -2795,7 +2994,7 @@ public class Sdk
     /// </summary>
     /// <param name="lppIPAddr"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern bool SYS_FreeHostIPAddresses(IntPtr lppIPAddr);
 
 
@@ -2806,7 +3005,7 @@ public class Sdk
     /// </summary>
     /// <param name="lpszAddress"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi)]
     public static extern uint SYS_GetIPv4InAddr(string lpszAddress);
     */
     /// <summary>
@@ -2815,7 +3014,7 @@ public class Sdk
     /// <param name="lpszAddress"></param>
     /// <param name="penType"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi)]
     public static extern bool SYS_IsIPAddress(string lpszAddress, ref IPAddrType penType);
 
     /// <summary>
@@ -2826,8 +3025,8 @@ public class Sdk
     /// <param name="piIPLenth"></param>
     /// <param name="penType"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode)]
-    public static extern bool SYS_GetIPAddress(string lpszHost, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder lpszIP, ref int piIPLenth, ref IPAddrType penType);
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi)]
+    public static extern bool SYS_GetIPAddress(string lpszHost, [MarshalAs(UnmanagedType.LPStr)] StringBuilder lpszIP, ref int piIPLenth, ref IPAddrType penType);
 
     /*
      * 已删除
@@ -2837,7 +3036,7 @@ public class Sdk
     /// <param name="lpszHost"></param>
     /// <param name="pulAddr"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Unicode)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi)]
     public static extern bool SYS_GetOptimalIPByHostName(string lpszHost, ref uint pulAddr);
     */
 
@@ -2846,7 +3045,7 @@ public class Sdk
     /// </summary>
     /// <param name="value"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern ulong SYS_NToH64(ulong value);
 
     /// <summary>
@@ -2854,37 +3053,446 @@ public class Sdk
     /// </summary>
     /// <param name="value"></param>
     /// <returns></returns>
-    [DllImport(HPSOCKET_DLL_PATH)]
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern ulong SYS_HToN64(ulong value);
 
 
-    /*
-     * 编码转换
-    // CP_XXX -> UNICODE
-    public static extern bool  SYS_CodePageToUnicode(int iCodePage, const char szSrc[], WCHAR szDest[], int& iDestLength);
+    /// <summary>
+    /// 分配内存
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern IntPtr SYS_Malloc(int value);
 
-    // UNICODE -> CP_XXX
-    public static extern bool  SYS_UnicodeToCodePage(int iCodePage, const WCHAR szSrc[], char szDest[], int& iDestLength);
+    /// <summary>
+    /// 重新分配内存
+    /// </summary>
+    /// <param name="p"></param>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern IntPtr SYS_Realloc(IntPtr p, int value);
 
-    // GBK -> UNICODE
-    public static extern bool  SYS_GbkToUnicode(const char szSrc[], WCHAR szDest[], int& iDestLength);
+    /// <summary>
+    /// 释放内存
+    /// </summary>
+    /// <param name="p"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void SYS_Free(IntPtr p);
 
-    // UNICODE -> GBK
-    public static extern bool  SYS_UnicodeToGbk(const WCHAR szSrc[], char szDest[], int& iDestLength);
 
-    // UTF8 -> UNICODE
-    public static extern bool  SYS_Utf8ToUnicode(const char szSrc[], WCHAR szDest[], int& iDestLength);
 
-    // UNICODE -> UTF8
-    public static extern bool  SYS_UnicodeToUtf8(const WCHAR szSrc[], char szDest[], int& iDestLength);
 
-    // GBK -> UTF8
-    public static extern bool  SYS_GbkToUtf8(const char szSrc[], char szDest[], int& iDestLength);
 
-    // UTF8 -> GBK
-    public static extern bool  SYS_Utf8ToGbk(const char szSrc[], char szDest[], int& iDestLength);
-    */
+    /// <summary>
+    /// 创建 HP_UdpArqServer 对象
+    /// </summary>
+    /// <param name="pListener"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern IntPtr Create_HP_UdpArqServer(IntPtr pListener);
 
+    /// <summary>
+    /// 创建 HP_UdpArqClient 对象
+    /// </summary>
+    /// <param name="pListener"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern IntPtr Create_HP_UdpArqClient(IntPtr pListener);
+
+    /// <summary>
+    /// 销毁 HP_UdpArqServer 对象
+    /// </summary>
+    /// <param name="pServer"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void Destroy_HP_UdpArqServer(IntPtr pServer);
+
+    /// <summary>
+    /// 销毁 HP_UdpArqClient 对象
+    /// </summary>
+    /// <param name="pClient"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void Destroy_HP_UdpArqClient(IntPtr pClient);
+
+    /// <summary>
+    /// 创建 HP_UdpArqServerListener 对象
+    /// </summary>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern IntPtr Create_HP_UdpArqServerListener();
+
+    /// <summary>
+    /// 创建 HP_UdpArqClientListener 对象
+    /// </summary>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern IntPtr Create_HP_UdpArqClientListener();
+
+    /// <summary>
+    /// 销毁 HP_UdpArqServerListener 对象
+    /// </summary>
+    /// <param name="pListener"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void Destroy_HP_UdpArqServerListener(IntPtr pListener);
+
+    /// <summary>
+    /// 销毁 HP_UdpArqClientListener 对象
+    /// </summary>
+    /// <param name="pListener"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void Destroy_HP_UdpArqClientListener(IntPtr pListener);
+
+    /**********************************************************************************/
+    /*************************** UDP ARQ Server 属性访问方法 ***************************/
+
+
+    /// <summary>
+    /// 设置是否开启 nodelay 模式（默认：FALSE，不开启）
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="bNoDelay"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqServer_SetNoDelay(IntPtr pServer, bool bNoDelay);
+
+    /// <summary>
+    /// 设置是否关闭拥塞控制（默认：FALSE，不关闭）
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="bTurnOff"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqServer_SetTurnoffCongestCtrl(IntPtr pServer, bool bTurnOff);
+
+    /// <summary>
+    /// 设置数据刷新间隔（毫秒，默认：20）
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="dwFlushInterval"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqServer_SetFlushInterval(IntPtr pServer, uint dwFlushInterval);
+
+    /// <summary>
+    /// 设置快速重传 ACK 跨越次数（默认：0，关闭快速重传）
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="dwResendByAcks"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqServer_SetResendByAcks(IntPtr pServer, uint dwResendByAcks);
+
+    /// <summary>
+    /// 设置发送窗口大小（数据包数量，默认：128）
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="dwSendWndSize"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqServer_SetSendWndSize(IntPtr pServer, uint dwSendWndSize);
+
+    /// <summary>
+    /// 设置接收窗口大小（数据包数量，默认：512）
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="dwRecvWndSize"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqServer_SetRecvWndSize(IntPtr pServer, uint dwRecvWndSize);
+
+    /// <summary>
+    /// 设置最小重传超时时间（毫秒，默认：30）
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="dwMinRto"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqServer_SetMinRto(IntPtr pServer, uint dwMinRto);
+
+    /// <summary>
+    /// 设置最大传输单元（默认：0，与 SetMaxDatagramSize() 一致）
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="dwMaxTransUnit"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqServer_SetMaxTransUnit(IntPtr pServer, uint dwMaxTransUnit);
+
+    /// <summary>
+    /// 设置最大数据包大小（默认：4096）
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="dwMaxMessageSize"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqServer_SetMaxMessageSize(IntPtr pServer, uint dwMaxMessageSize);
+
+    /// <summary>
+    /// 设置握手超时时间（毫秒，默认：5000）
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="dwHandShakeTimeout"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqServer_SetHandShakeTimeout(IntPtr pServer, uint dwHandShakeTimeout);
+
+
+    /// <summary>
+    /// 检测是否开启 nodelay 模式 
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_UdpArqServer_IsNoDelay(IntPtr pServer);
+
+    /// <summary>
+    /// 检测是否关闭拥塞控制
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_UdpArqServer_IsTurnoffCongestCtrl(IntPtr pServer);
+
+    /// <summary>
+    /// 获取数据刷新间隔
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqServer_GetFlushInterval(IntPtr pServer);
+
+    /// <summary>
+    /// 获取快速重传 ACK 跨越次数
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqServer_GetResendByAcks(IntPtr pServer);
+
+    /// <summary>
+    /// 获取发送窗口大小
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqServer_GetSendWndSize(IntPtr pServer);
+
+    /// <summary>
+    /// 获取接收窗口大小
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqServer_GetRecvWndSize(IntPtr pServer);
+
+    /// <summary>
+    /// 获取最小重传超时时间
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqServer_GetMinRto(IntPtr pServer);
+
+    /// <summary>
+    /// 获取最大传输单元
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqServer_GetMaxTransUnit(IntPtr pServer);
+
+    /// <summary>
+    /// 获取最大数据包大小
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqServer_GetMaxMessageSize(IntPtr pServer);
+
+    /// <summary>
+    /// 获取握手超时时间
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqServer_GetHandShakeTimeout(IntPtr pServer);
+
+
+    /// <summary>
+    /// 获取等待发送包数量
+    /// </summary>
+    /// <param name="pServer"></param>
+    /// <param name="dwConnId"></param>
+    /// <param name="piCount"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_UdpArqServer_GetWaitingSendMessageCount(IntPtr pServer, IntPtr dwConnId, ref int piCount);
+
+    /**********************************************************************************/
+    /*************************** UDP ARQ Client 属性访问方法 ***************************/
+
+
+    /// <summary>
+    /// 设置是否开启 nodelay 模式（默认：FALSE，不开启）
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="bNoDelay"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqClient_SetNoDelay(IntPtr pClient, bool bNoDelay);
+
+    /// <summary>
+    /// 设置是否关闭拥塞控制（默认：FALSE，不关闭）
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="bTurnOff"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqClient_SetTurnoffCongestCtrl(IntPtr pClient, bool bTurnOff);
+
+    /// <summary>
+    /// 设置数据刷新间隔（毫秒，默认：20）
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="dwFlushInterval"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqClient_SetFlushInterval(IntPtr pClient, uint dwFlushInterval);
+
+    /// <summary>
+    /// 设置快速重传 ACK 跨越次数（默认：0，关闭快速重传）
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="dwResendByAcks"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqClient_SetResendByAcks(IntPtr pClient, uint dwResendByAcks);
+
+    /// <summary>
+    /// 设置发送窗口大小（数据包数量，默认：128）
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="dwSendWndSize"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqClient_SetSendWndSize(IntPtr pClient, uint dwSendWndSize);
+
+    /// <summary>
+    /// 设置接收窗口大小（数据包数量，默认：512）
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="dwRecvWndSize"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqClient_SetRecvWndSize(IntPtr pClient, uint dwRecvWndSize);
+
+    /// <summary>
+    /// 设置最小重传超时时间（毫秒，默认：30）
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="dwMinRto"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqClient_SetMinRto(IntPtr pClient, uint dwMinRto);
+
+    /// <summary>
+    /// 设置最大传输单元（默认：0，与 SetMaxDatagramSize() 一致）
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="dwMaxTransUnit"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqClient_SetMaxTransUnit(IntPtr pClient, uint dwMaxTransUnit);
+
+    /// <summary>
+    /// 设置最大数据包大小（默认：4096）
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="dwMaxMessageSize"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqClient_SetMaxMessageSize(IntPtr pClient, uint dwMaxMessageSize);
+
+    /// <summary>
+    /// 设置握手超时时间（毫秒，默认：5000）
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="dwHandShakeTimeout"></param>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern void HP_UdpArqClient_SetHandShakeTimeout(IntPtr pClient, uint dwHandShakeTimeout);
+
+
+    /// <summary>
+    /// 检测是否开启 nodelay 模式
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_UdpArqClient_IsNoDelay(IntPtr pClient);
+
+    /// <summary>
+    /// 检测是否关闭拥塞控制
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_UdpArqClient_IsTurnoffCongestCtrl(IntPtr pClient);
+
+    /// <summary>
+    /// 获取数据刷新间隔
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqClient_GetFlushInterval(IntPtr pClient);
+
+    /// <summary>
+    /// 获取快速重传 ACK 跨越次数
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqClient_GetResendByAcks(IntPtr pClient);
+
+    /// <summary>
+    /// 获取发送窗口大小
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqClient_GetSendWndSize(IntPtr pClient);
+
+    /// <summary>
+    /// 获取接收窗口大小
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqClient_GetRecvWndSize(IntPtr pClient);
+
+    /// <summary>
+    /// 获取最小重传超时时间
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqClient_GetMinRto(IntPtr pClient);
+
+    /// <summary>
+    /// 获取最大传输单元
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqClient_GetMaxTransUnit(IntPtr pClient);
+
+    /// <summary>
+    /// 获取最大数据包大小
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqClient_GetMaxMessageSize(IntPtr pClient);
+
+    /// <summary>
+    /// 获取握手超时时间
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern uint HP_UdpArqClient_GetHandShakeTimeout(IntPtr pClient);
+
+
+    /// <summary>
+    /// 获取等待发送包数量
+    /// </summary>
+    /// <param name="pClient"></param>
+    /// <param name="piCount"></param>
+    /// <returns></returns>
+    [DllImport(HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+    public static extern bool HP_UdpArqClient_GetWaitingSendMessageCount(IntPtr pClient, ref int piCount);
 
 
 }

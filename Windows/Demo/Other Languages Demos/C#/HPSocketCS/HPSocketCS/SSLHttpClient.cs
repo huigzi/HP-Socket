@@ -8,14 +8,27 @@ namespace HPSocketCS
 {
     public class HttpsClient : SSLHttpClient
     {
+        public HttpsClient()
+            : base()
+        {
 
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="verifyModel">验证模式</param>
+        /// <param name="pemCertFile">证书文件</param>
+        /// <param name="pemKeyFile">私钥文件</param>
+        /// <param name="keyPasswod">私钥密码（没有密码则为空）</param>
+        /// <param name="caPemCertFileOrPath">CA 证书文件或目录（单向验证或客户端可选）</param>
+        public HttpsClient(SSLVerifyMode verifyModel, string pemCertFile, string pemKeyFile, string keyPasswod, string caPemCertFileOrPath)
+            : base(verifyModel, pemCertFile, pemKeyFile, keyPasswod, caPemCertFileOrPath)
+        {
+        }
     }
     public class SSLHttpClient : HttpClient
     {
-
-        static int ObjectReferer = 0;
-        static string SSLInitLock = "SSL初始化锁";
-
         /// <summary>
         /// 验证模式
         /// </summary>
@@ -39,31 +52,55 @@ namespace HPSocketCS
 
         public SSLHttpClient()
         {
-            Interlocked.Increment(ref ObjectReferer);
         }
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="_verifyModel">验证模式</param>
-        /// <param name="_pemCertFile">证书文件（客户端可选）</param>
-        /// <param name="_pemKeyFile">私钥文件（客户端可选）</param>
-        /// <param name="_keyPasswod">私钥密码（没有密码则为空）</param>
-        /// <param name="_caPemCertFileOrPath">CA 证书文件或目录（单向验证或客户端可选）</param>
-        public SSLHttpClient(SSLVerifyMode _verifyModel, string _pemCertFile, string _pemKeyFile, string _keyPasswod, string _caPemCertFileOrPath)
+        /// <param name="verifyModel">验证模式</param>
+        /// <param name="pemCertFile">证书文件（客户端可选）</param>
+        /// <param name="pemKeyFile">私钥文件（客户端可选）</param>
+        /// <param name="keyPasswod">私钥密码（没有密码则为空）</param>
+        /// <param name="caPemCertFileOrPath">CA 证书文件或目录（单向验证或客户端可选）</param>
+        public SSLHttpClient(SSLVerifyMode verifyModel, string pemCertFile, string pemKeyFile, string keyPasswod, string caPemCertFileOrPath)
         {
-            Interlocked.Increment(ref ObjectReferer);
-            this.VerifyMode = _verifyModel;
-            this.PemCertFile = _pemCertFile;
-            this.PemKeyFile = _pemKeyFile;
-            this.KeyPasswod = _keyPasswod;
-            this.CAPemCertFileOrPath = _caPemCertFileOrPath;
-            //Initialize();
+            this.VerifyMode = verifyModel;
+            this.PemCertFile = pemCertFile;
+            this.PemKeyFile = pemKeyFile;
+            this.KeyPasswod = keyPasswod;
+            this.CAPemCertFileOrPath = caPemCertFileOrPath;
         }
 
-        ~SSLHttpClient()
+
+        /// <summary>
+        /// 初始化SSL环境
+        /// </summary>
+        /// <returns></returns>
+        public virtual bool Initialize()
         {
-            //Uninitialize();
+            if (pClient != IntPtr.Zero)
+            {
+                PemCertFile = string.IsNullOrWhiteSpace(PemCertFile) ? null : PemCertFile;
+                PemKeyFile = string.IsNullOrWhiteSpace(PemKeyFile) ? null : PemKeyFile;
+                KeyPasswod = string.IsNullOrWhiteSpace(KeyPasswod) ? null : KeyPasswod;
+                CAPemCertFileOrPath = string.IsNullOrWhiteSpace(CAPemCertFileOrPath) ? null : CAPemCertFileOrPath;
+
+                return SSLSdk.HP_SSLClient_SetupSSLContext(pClient, VerifyMode, PemCertFile, PemKeyFile, KeyPasswod, CAPemCertFileOrPath);
+            }
+
+            return false;
+        }
+
+
+        /// <summary>
+        /// 反初始化SSL环境
+        /// </summary>
+        public virtual void Uninitialize()
+        {
+            if (pClient != IntPtr.Zero)
+            {
+                SSLSdk.HP_SSLClient_CleanupSSLContext(pClient);
+            }
         }
 
         protected override bool CreateListener()
@@ -90,53 +127,6 @@ namespace HPSocketCS
             return true;
         }
 
-        /// <summary>
-        /// 初始化SSL环境
-        /// </summary>
-        /// <returns></returns>
-        protected virtual bool Initialize()
-        {
-            lock (SSLInitLock)
-            {
-                //if (SSLSdk.HP_SSL_IsValid() == false)
-                {
-
-                    PemCertFile = string.IsNullOrWhiteSpace(PemCertFile) ? null : PemCertFile;
-                    PemKeyFile = string.IsNullOrWhiteSpace(PemKeyFile) ? null : PemKeyFile;
-                    KeyPasswod = string.IsNullOrWhiteSpace(KeyPasswod) ? null : KeyPasswod;
-                    CAPemCertFileOrPath = string.IsNullOrWhiteSpace(CAPemCertFileOrPath) ? null : CAPemCertFileOrPath;
-
-
-                    var ret = SSLSdk.HP_SSLClient_SetupSSLContext(pClient, VerifyMode, PemCertFile, PemKeyFile, KeyPasswod, CAPemCertFileOrPath);
-                    System.Diagnostics.Trace.WriteLine($"ssl Initialize : {ret}");
-                }
-
-                return true;
-            }
-        }
-
-        /// <summary>
-        /// 反初始化SSL环境
-        /// </summary>
-        protected virtual void Uninitialize()
-        {
-            if (Interlocked.Decrement(ref ObjectReferer) == 0 && pClient != IntPtr.Zero)
-            {
-                SSLSdk.HP_SSLClient_CleanupSSLContext(pClient);
-            }
-        }
-
-        public new bool Connect(string address, ushort port, bool async = false)
-        {
-            Uninitialize();
-            bool ret = false;
-            if (Initialize())
-            {
-                ret = base.Connect(address, port, async);
-            }
-
-            return ret;
-        }
 
         public override void Destroy()
         {

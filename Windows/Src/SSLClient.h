@@ -39,6 +39,12 @@ public:
 	virtual void CleanupSSLContext()
 		{m_sslCtx.Cleanup();}
 
+	virtual BOOL StartSSLHandShake();
+
+public:
+	virtual void SetSSLAutoHandShake(BOOL bAutoHandShake)	{m_bSSLAutoHandShake = bAutoHandShake;}
+	virtual BOOL IsSSLAutoHandShake	()						{return m_bSSLAutoHandShake;}
+
 protected:
 	virtual EnHandleResult FireConnect();
 	virtual EnHandleResult FireReceive(const BYTE* pData, int iLength);
@@ -47,32 +53,40 @@ protected:
 	virtual void PrepareStart();
 	virtual void Reset();
 
-	virtual void OnWorkerThreadEnd(DWORD dwThreadID);
+	virtual void OnWorkerThreadEnd(THR_ID dwThreadID);
+
+protected:
+	virtual BOOL StartSSLHandShakeNoCheck();
 
 private:
+	void DoSSLHandShake();
 
+private:
 	friend EnHandleResult ProcessHandShake<>(CSSLClient* pThis, CSSLClient* pSocketObj, CSSLSession* pSession);
 	friend EnHandleResult ProcessReceive<>(CSSLClient* pThis, CSSLClient* pSocketObj, CSSLSession* pSession, const BYTE* pData, int iLength);
 	friend BOOL ProcessSend<>(CSSLClient* pThis, CSSLClient* pSocketObj, CSSLSession* pSession, const WSABUF * pBuffers, int iCount);
 
 public:
 	CSSLClient(ITcpClientListener* pListener)
-	: CTcpClient(pListener)
-	, m_sslSession		(m_itPool)
-	, m_dwMainThreadID	(0)
+	: CTcpClient			(pListener)
+	, m_sslSession			(m_itPool)
+	, m_dwMainThreadID		(0)
+	, m_bSSLAutoHandShake	(TRUE)
 	{
 
 	}
 
 	virtual ~CSSLClient()
 	{
-		Stop();
+		ENSURE_STOP();
 	}
 
 private:
+	DWORD		m_dwMainThreadID;
+	BOOL		m_bSSLAutoHandShake;
+
 	CSSLContext m_sslCtx;
 	CSSLSession m_sslSession;
-	DWORD		m_dwMainThreadID;
 };
 
 #endif

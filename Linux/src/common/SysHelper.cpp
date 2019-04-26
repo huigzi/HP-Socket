@@ -23,14 +23,14 @@
 
 #include "SysHelper.h"
 
-DWORD GetDefaultBufferSize()
+DWORD GetSysPageSize()
 {
-	static DWORD s_dtsbs = (DWORD)SysGetPageSize();
+	static const DWORD s_dtsbs = (DWORD)SysGetPageSize();
 	return s_dtsbs;
 }
 
 DWORD GetDefaultWorkerThreadCount()
 {
-	static DWORD s_dwtc = MIN((::SysGetNumberOfProcessors() * 2 + 2), MAX_WORKER_THREAD_COUNT);
+	static const DWORD s_dwtc = MIN((PROCESSOR_COUNT * 2 + 2), MAX_WORKER_THREAD_COUNT);
 	return s_dwtc;
 }

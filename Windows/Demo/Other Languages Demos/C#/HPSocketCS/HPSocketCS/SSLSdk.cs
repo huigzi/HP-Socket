@@ -63,18 +63,13 @@ namespace HPSocketCS
         /// <returns></returns>
         public delegate int SNIServerNameCallback(string serverName);
 
-        /// <summary>
-        /// HPSocket的文件路径
-        /// </summary>
-        public const string HPSOCKET_SSL_DLL_PATH = "HPSocket4C_U.dll";
-
         /**************** HPSocket4C 导出函数 ****************/
         /// <summary>
         /// 创建 HP_SSLServer 对象
         /// </summary>
         /// <param name="pListener"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern IntPtr Create_HP_SSLServer(IntPtr pListener);
 
         /// <summary>
@@ -82,7 +77,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pListener"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern IntPtr Create_HP_SSLAgent(IntPtr pListener);
 
         /// <summary>
@@ -90,7 +85,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pListener"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern IntPtr Create_HP_SSLClient(IntPtr pListener);
 
         /// <summary>
@@ -98,7 +93,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pListener"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern IntPtr Create_HP_SSLPullServer(IntPtr pListener);
 
         /// <summary>
@@ -106,7 +101,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pListener"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern IntPtr Create_HP_SSLPullAgent(IntPtr pListener);
 
         /// <summary>
@@ -114,7 +109,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pListener"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern IntPtr Create_HP_SSLPullClient(IntPtr pListener);
 
         /// <summary>
@@ -122,7 +117,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pListener"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern IntPtr Create_HP_SSLPackServer(IntPtr pListener);
 
         /// <summary>
@@ -130,7 +125,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pListener"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern IntPtr Create_HP_SSLPackAgent(IntPtr pListener);
 
         /// <summary>
@@ -138,7 +133,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pListener"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern IntPtr Create_HP_SSLPackClient(IntPtr pListener);
 
 
@@ -148,7 +143,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pObj"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void Destroy_HP_SSLServer(IntPtr pObj);
 
         /// <summary>
@@ -156,7 +151,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pObj"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void Destroy_HP_SSLAgent(IntPtr pObj);
 
         /// <summary>
@@ -164,7 +159,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pObj"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void Destroy_HP_SSLClient(IntPtr pObj);
 
         /// <summary>
@@ -172,7 +167,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pObj"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void Destroy_HP_SSLPullServer(IntPtr pObj);
 
         /// <summary>
@@ -180,7 +175,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pObj"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void Destroy_HP_SSLPullAgent(IntPtr pObj);
 
         /// <summary>
@@ -188,7 +183,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pObj"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void Destroy_HP_SSLPullClient(IntPtr pObj);
 
         /// <summary>
@@ -196,7 +191,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pObj"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void Destroy_HP_SSLPackServer(IntPtr pObj);
 
         /// <summary>
@@ -204,7 +199,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pObj"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void Destroy_HP_SSLPackAgent(IntPtr pObj);
 
         /// <summary>
@@ -212,7 +207,7 @@ namespace HPSocketCS
         /// </summary>
         /// <param name="pObj"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void Destroy_HP_SSLPackClient(IntPtr pObj);
 
         /************************ SSL 初始化方法 ****************************/
@@ -228,7 +223,7 @@ namespace HPSocketCS
         /// <param name="lpszKeyPasswod">私钥密码（没有密码则为空）</param>
         /// <param name="lpszCAPemCertFileOrPath"> CA 证书文件或目录（单向验证或客户端可选）</param>
         /// <returns>TRUE.成功 FALSE.失败，可通过 SYS_GetLastError() 获取失败原因</returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH, CharSet = CharSet.Unicode, SetLastError = true)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern bool HP_SSLAgent_SetupSSLContext(IntPtr pAgent, SSLVerifyMode verifyMode, string lpszPemCertFile, string lpszPemKeyFile, string lpszKeyPasswod, string lpszCAPemCertFileOrPath);
 
         /// <summary>
@@ -242,7 +237,7 @@ namespace HPSocketCS
         /// <param name="lpszKeyPasswod">私钥密码（没有密码则为空）</param>
         /// <param name="lpszCAPemCertFileOrPath"> CA 证书文件或目录（单向验证或客户端可选）</param>
         /// <returns>TRUE.成功 FALSE.失败，可通过 SYS_GetLastError() 获取失败原因</returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH, CharSet = CharSet.Unicode, SetLastError = true)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern bool HP_SSLClient_SetupSSLContext(IntPtr pClient, SSLVerifyMode verifyMode, string lpszPemCertFile, string lpszPemKeyFile, string lpszKeyPasswod, string lpszCAPemCertFileOrPath);
 
         /// <summary>
@@ -257,7 +252,7 @@ namespace HPSocketCS
         /// <param name="lpszCAPemCertFileOrPath"> CA 证书文件或目录（单向验证或客户端可选）</param>
         /// <param name="fnServerNameCallback">SNI 回调函数指针（可选）</param>
         /// <returns>TRUE.成功 FALSE.失败，可通过 SYS_GetLastError() 获取失败原因</returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH, CharSet = CharSet.Unicode, SetLastError = true)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern bool HP_SSLServer_SetupSSLContext(IntPtr pServer, SSLVerifyMode verifyMode, string lpszPemCertFile, string lpszPemKeyFile, string lpszKeyPasswod, string lpszCAPemCertFileOrPath, SNIServerNameCallback fnServerNameCallback);
  
         /// <summary>
@@ -271,7 +266,7 @@ namespace HPSocketCS
         /// <param name="lpszKeyPasswod">私钥密码（没有密码则为空）</param>
         /// <param name="lpszCAPemCertFileOrPath"> CA 证书文件或目录（单向验证或客户端可选）</param>
         /// <returns>TRUE.成功 FALSE.失败，可通过 SYS_GetLastError() 获取失败原因</returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH, CharSet = CharSet.Unicode, SetLastError = true)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern int HP_SSLServer_AddSSLContext(IntPtr pServer, SSLVerifyMode verifyMode, string lpszPemCertFile, string lpszPemKeyFile, string lpszKeyPasswod, string lpszCAPemCertFileOrPath);
 
         /// <summary>
@@ -281,7 +276,7 @@ namespace HPSocketCS
         /// 2、当要重新设置通信组件 SSL 环境参数时，需要先调用本方法清理原先的环境参数
         /// </summary>
         /// <param name="pAgent"></param>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void HP_SSLAgent_CleanupSSLContext(IntPtr pAgent);
 
         /// <summary>
@@ -291,7 +286,7 @@ namespace HPSocketCS
         /// 2、当要重新设置通信组件 SSL 环境参数时，需要先调用本方法清理原先的环境参数
         /// </summary>
         /// <param name="pClient"></param>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void HP_SSLClient_CleanupSSLContext(IntPtr pClient);
 
         /// <summary>
@@ -301,36 +296,9 @@ namespace HPSocketCS
         /// 2、当要重新设置通信组件 SSL 环境参数时，需要先调用本方法清理原先的环境参数
         /// </summary>
         /// <param name="pServer"></param>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void HP_SSLServer_CleanupSSLContext(IntPtr pServer);
-
-        /*已删除
-        /// <summary>
-        /// 名称：初始化 SSL 全局环境参数
-        /// 描述：SSL 全局环境参数必须在 SSL 通信组件启动前完成初始化，否则启动失败
-        /// </summary>
-        /// <param name="sessionMode">SSL 工作模式</param>
-        /// <param name="verifyMode">SSL 验证模式</param>
-        /// <param name="lpszPemCertFile">证书文件（客户端可选）</param>
-        /// <param name="lpszPemKeyFile">私钥文件（客户端可选）</param>
-        /// <param name="lpszKeyPasswod">私钥密码（没有密码则为空）</param>
-        /// <param name="lpszCAPemCertFileOrPath">CA 证书文件或目录（单向验证或客户端可选）</param>
-        /// <param name="fnServerNameCallback">SNI 回调函数指针（可选，只用于服务端）</param>
-        /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH, CharSet = CharSet.Unicode, SetLastError = true)]
-        public static extern bool HP_SSL_Initialize(SSLSessionMode sessionMode, SSLVerifyMode verifyMode, string lpszPemCertFile, string lpszPemKeyFile, string lpszKeyPasswod, string lpszCAPemCertFileOrPath, SSLSdk.SNIServerNameCallback fnServerNameCallback);
-        */
-        /*
-         * 已删除
-        /// <summary>
-        /// 清理 SSL 全局运行环境
-        /// 描述：清理 SSL 全局运行环境，回收 SSL 相关内存
-        /// 1、应用程序退出时会自动调用调用本方法
-        /// 2、当要重新设置 SSL 全局环境参数时，需要先调用本方法清理原先的环境参数
-        /// </summary>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
-        public static extern void HP_SSL_Cleanup();
-        */
+        
 
         /// <summary>
         /// 清理线程局部环境 SSL 资源
@@ -339,17 +307,87 @@ namespace HPSocketCS
         /// 1、主线程和 HP-Socket 工作线程在通信结束时会自动清理线程局部环境 SSL 资源。因此，一般情况下不必手工调用本方法
         /// 2、特殊情况下，当自定义线程参与 HP-Socket 通信操作并检查到 SSL 内存泄漏时，需在每次通信结束时自定义线程调用本方法
         /// </summary>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern void HP_SSL_RemoveThreadLocalState();
 
-        /*
-         * 已删除
+
         /// <summary>
-        /// 检查 SSL 全局运行环境是否初始化完成
+        /// 启动 SSL 握手
+        /// 当通信组件设置为非自动握手时，需要调用本方法启动 SSL 握手
         /// </summary>
+        /// <param name="pServer"></param>
+        /// <param name="dwConnID"></param>
+        /// <returns>TRUE	-- 成功，FALSE	-- 失败，可通过 SYS_GetLastError() 获取失败原因</returns>
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+        public static extern bool HP_SSLServer_StartSSLHandShake(IntPtr pServer, IntPtr dwConnID);
+
+
+        /// <summary>
+        /// 设置通信组件握手方式（默认：TRUE，自动握手)
+        /// </summary>
+        /// <param name="pServer"></param>
+        /// <param name="bAutoHandShake"></param>
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+        public static extern void HP_SSLServer_SetSSLAutoHandShake(IntPtr pServer, bool bAutoHandShake);
+
+        /// <summary>
+        /// 获取通信组件握手方式
+        /// </summary>
+        /// <param name="pServer"></param>
         /// <returns></returns>
-        [DllImport(HPSOCKET_SSL_DLL_PATH)]
-        public static extern bool HP_SSL_IsValid();
-        */
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+        public static extern bool HP_SSLServer_IsSSLAutoHandShake(IntPtr pServer);
+
+        /// <summary>
+        /// 启动 SSL 握手
+        /// 当通信组件设置为非自动握手时，需要调用本方法启动 SSL 握手
+        /// </summary>
+        /// <param name="pAgent"></param>
+        /// <param name="dwConnID"></param>
+        /// <returns>TRUE	-- 成功，FALSE	-- 失败，可通过 SYS_GetLastError() 获取失败原因</returns>
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+        public static extern bool HP_SSLAgent_StartSSLHandShake(IntPtr pAgent, IntPtr dwConnID);
+
+        /// <summary>
+        /// 设置通信组件握手方式（默认：TRUE，自动握手）
+        /// </summary>
+        /// <param name="pAgent"></param>
+        /// <param name="bAutoHandShake"></param>
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+        public static extern void HP_SSLAgent_SetSSLAutoHandShake(IntPtr pAgent, bool bAutoHandShake);
+
+        /// <summary>
+        /// 获取通信组件握手方式
+        /// </summary>
+        /// <param name="pAgent"></param>
+        /// <returns></returns>
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+        public static extern bool HP_SSLAgent_IsSSLAutoHandShake(IntPtr pAgent);
+
+        /// <summary>
+        /// 启动 SSL 握手
+        /// 当通信组件设置为非自动握手时，需要调用本方法启动 SSL 握手
+        /// </summary>
+        /// <param name="pClient"></param>
+        /// <returns>TRUE	-- 成功，FALSE	-- 失败，可通过 SYS_GetLastError() 获取失败原因</returns>
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+        public static extern bool HP_SSLClient_StartSSLHandShake(IntPtr pClient);
+
+        /// <summary>
+        /// 设置通信组件握手方式（默认：TRUE，自动握手）
+        /// </summary>
+        /// <param name="pClient"></param>
+        /// <param name="bAutoHandShake"></param>
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+        public static extern void HP_SSLClient_SetSSLAutoHandShake(IntPtr pClient, bool bAutoHandShake);
+
+        /// <summary>
+        /// 获取通信组件握手方式
+        /// </summary>
+        /// <param name="pClient"></param>
+        /// <returns></returns>
+        [DllImport(Sdk.HPSOCKET_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
+        public static extern bool HP_SSLClient_IsSSLAutoHandShake(IntPtr pClient);
+
     }
 }

@@ -30,17 +30,19 @@ Desc:
 
 #include "stdafx.h"
 #include "BufferPool.h"
-#include "SysHelper.h"
 #include "WaitFor.h"
 
-const DWORD TItem::DEFAULT_ITEM_CAPACITY			= ::SysGetPageSize();
+#pragma warning(push)
+#pragma warning(disable: 4458)
+
+const DWORD TItem::DEFAULT_ITEM_CAPACITY			= DEFAULT_BUFFER_CACHE_CAPACITY;
 const DWORD CBufferPool::DEFAULT_MAX_CACHE_SIZE		= 0;
 const DWORD CBufferPool::DEFAULT_ITEM_CAPACITY		= CItemPool::DEFAULT_ITEM_CAPACITY;
 const DWORD CBufferPool::DEFAULT_ITEM_POOL_SIZE		= CItemPool::DEFAULT_POOL_SIZE;
 const DWORD CBufferPool::DEFAULT_ITEM_POOL_HOLD		= CItemPool::DEFAULT_POOL_HOLD;
-const DWORD CBufferPool::DEFAULT_BUFFER_LOCK_TIME	= 10 * 1000;
-const DWORD CBufferPool::DEFAULT_BUFFER_POOL_SIZE	= 150;
-const DWORD CBufferPool::DEFAULT_BUFFER_POOL_HOLD	= 600;
+const DWORD CBufferPool::DEFAULT_BUFFER_LOCK_TIME	= DEFAULT_OBJECT_CACHE_LOCK_TIME;
+const DWORD CBufferPool::DEFAULT_BUFFER_POOL_SIZE	= DEFAULT_OBJECT_CACHE_POOL_SIZE;
+const DWORD CBufferPool::DEFAULT_BUFFER_POOL_HOLD	= DEFAULT_OBJECT_CACHE_POOL_HOLD;
 
 TItem* TItem::Construct(CPrivateHeap& heap, int capacity, BYTE* pData, int length)
 {
@@ -325,31 +327,16 @@ void CBufferPool::PutFreeBuffer(TBuffer* pBuffer)
 	{
 		m_itPool.PutFreeItem(pBuffer->items);
 
-		if(!m_lsFreeBuffer.TryPut(pBuffer))
-		{
-			m_lsGCBuffer.PushBack(pBuffer);
+		ReleaseGCBuffer();
 
-			if(m_lsGCBuffer.Size() > m_dwBufferPoolSize)
-				ReleaseGCBuffer();
-		}
+		if(!m_lsFreeBuffer.TryPut(pBuffer))
+			m_lsGCBuffer.PushBack(pBuffer);
 	}
 }
 
 void CBufferPool::ReleaseGCBuffer(BOOL bForce)
 {
-	TBuffer* pBuffer = nullptr;
-	DWORD now		 = ::TimeGetTime();
-
-	while(m_lsGCBuffer.PopFront(&pBuffer))
-	{
-		if(bForce || (int)(now - pBuffer->freeTime) >= (int)m_dwBufferLockTime)
-			TBuffer::Destruct(pBuffer);
-		else
-		{
-			m_lsGCBuffer.PushBack(pBuffer);
-			break;
-		}
-	}
+	::ReleaseGCObj(m_lsGCBuffer, m_dwBufferLockTime, bForce);
 }
 
 TBuffer* CBufferPool::PutCacheBuffer(ULONG_PTR dwID)
@@ -372,10 +359,10 @@ TBuffer* CBufferPool::PickFreeBuffer(ULONG_PTR dwID)
 	if(m_lsFreeBuffer.TryLock(&pBuffer, dwIndex))
 	{
 		if(::GetTimeGap32(pBuffer->freeTime) >= m_dwBufferLockTime)
-			VERIFY(m_lsFreeBuffer.ReleaseLock(nullptr, dwIndex));
+			ENSURE(m_lsFreeBuffer.ReleaseLock(nullptr, dwIndex));
 		else
 		{
-			VERIFY(m_lsFreeBuffer.ReleaseLock(pBuffer, dwIndex));
+			ENSURE(m_lsFreeBuffer.ReleaseLock(pBuffer, dwIndex));
 			pBuffer = nullptr;
 		}
 	}
@@ -404,7 +391,7 @@ void CBufferPool::Prepare()
 	m_itPool.Prepare();
 
 	m_bfCache.Reset(m_dwMaxCacheSize);
-	m_lsFreeBuffer.Reset(m_dwBufferPoolHold);
+	m_lsFreeBuffer.Reset(m_dwBufferPoolSize);
 }
 
 void CBufferPool::Clear()
@@ -425,12 +412,14 @@ void CBufferPool::Clear()
 	while(m_lsFreeBuffer.TryGet(&pBuffer))
 		TBuffer::Destruct(pBuffer);
 
-	VERIFY(m_lsFreeBuffer.IsEmpty());
+	ENSURE(m_lsFreeBuffer.IsEmpty());
 	m_lsFreeBuffer.Reset();
 
 	ReleaseGCBuffer(TRUE);
-	VERIFY(m_lsGCBuffer.IsEmpty());
+	ENSURE(m_lsGCBuffer.IsEmpty());
 
 	m_itPool.Clear();
 	m_heap.Reset();
 }
+
+#pragma warning(pop)

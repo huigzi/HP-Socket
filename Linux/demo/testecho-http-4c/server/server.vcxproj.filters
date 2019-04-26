@@ -36,6 +36,9 @@
     <ClCompile Include="..\..\..\src\common\crypto\Crypto.cpp">
       <Filter>Common\Crypto</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\common\Thread.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\common\FileHelper.h">

@@ -36,6 +36,10 @@
 #include "../Common/Src/BufferPool.h"
 #include "../Common/Src/RingBuffer.h"
 
+#ifdef _ZLIB_SUPPORT
+#include "../Common/Src/zlib/zutil.h"
+#endif
+
 /************************************************************************
 名称：全局常量
 描述：声明组件的公共全局常量
@@ -53,43 +57,45 @@
 /* Server/Agent 默认最大连接数 */
 #define DEFAULT_MAX_CONNECTION_COUNT			10000
 /* Server/Agent 默认 Socket 缓存对象锁定时间 */
-#define DEFAULT_FREE_SOCKETOBJ_LOCK_TIME		(10 * 1000)
+#define DEFAULT_FREE_SOCKETOBJ_LOCK_TIME		DEFAULT_OBJECT_CACHE_LOCK_TIME
 /* Server/Agent 默认 Socket 缓存池大小 */
-#define DEFAULT_FREE_SOCKETOBJ_POOL				150
+#define DEFAULT_FREE_SOCKETOBJ_POOL				DEFAULT_OBJECT_CACHE_POOL_SIZE
 /* Server/Agent 默认 Socket 缓存池回收阀值 */
-#define DEFAULT_FREE_SOCKETOBJ_HOLD				600
+#define DEFAULT_FREE_SOCKETOBJ_HOLD				DEFAULT_OBJECT_CACHE_POOL_HOLD
 /* Server/Agent 默认内存块缓存池大小 */
-#define DEFAULT_FREE_BUFFEROBJ_POOL				300
+#define DEFAULT_FREE_BUFFEROBJ_POOL				DEFAULT_BUFFER_CACHE_POOL_SIZE
 /* Server/Agent 默认内存块缓存池回收阀值 */
-#define DEFAULT_FREE_BUFFEROBJ_HOLD				1200
+#define DEFAULT_FREE_BUFFEROBJ_HOLD				DEFAULT_BUFFER_CACHE_POOL_HOLD
 /* Client 默认内存块缓存池大小 */
-#define DEFAULT_CLIENT_FREE_BUFFER_POOL_SIZE	10
+#define DEFAULT_CLIENT_FREE_BUFFER_POOL_SIZE	60
 /* Client 默认内存块缓存池回收阀值 */
-#define DEFAULT_CLIENT_FREE_BUFFER_POOL_HOLD	40
+#define DEFAULT_CLIENT_FREE_BUFFER_POOL_HOLD	60
 /* IPv4 默认绑定地址 */
 #define  DEFAULT_IPV4_BIND_ADDRESS				_T("0.0.0.0")
 /* IPv6 默认绑定地址 */
 #define  DEFAULT_IPV6_BIND_ADDRESS				_T("::")
 
 /* TCP 默认通信数据缓冲区大小 */
-#define DEFAULT_TCP_SOCKET_BUFFER_SIZE			DEFAULT_BUFFER_SIZE
+#define DEFAULT_TCP_SOCKET_BUFFER_SIZE			DEFAULT_BUFFER_CACHE_CAPACITY
 /* TCP 默认心跳包间隔 */
-#define DEFALUT_TCP_KEEPALIVE_TIME				(30 * 1000)
+#define DEFALUT_TCP_KEEPALIVE_TIME				(60 * 1000)
 /* TCP 默认心跳确认包检测间隔 */
-#define DEFALUT_TCP_KEEPALIVE_INTERVAL			(10 * 1000)
+#define DEFALUT_TCP_KEEPALIVE_INTERVAL			(20 * 1000)
 /* TCP Server 默认 Listen 队列大小 */
 #define DEFAULT_TCP_SERVER_SOCKET_LISTEN_QUEUE	SOMAXCONN
 /* TCP Server 默认预投递 Accept 数量 */
 #define DEFAULT_TCP_SERVER_ACCEPT_SOCKET_COUNT	300
 
+/* UDP 最大数据报文最大长度 */
+#define MAXIMUM_UDP_MAX_DATAGRAM_SIZE			DEFAULT_BUFFER_CACHE_CAPACITY
 /* UDP 默认数据报文最大长度 */
-#define DEFAULT_UDP_MAX_DATAGRAM_SIZE			1472
+#define DEFAULT_UDP_MAX_DATAGRAM_SIZE			1432
 /* UDP 默认 Receive 预投递数量 */
 #define DEFAULT_UDP_POST_RECEIVE_COUNT			300
 /* UDP 默认监测包尝试次数 */
 #define DEFAULT_UDP_DETECT_ATTEMPTS				3
 /* UDP 默认监测包发送间隔 */
-#define DEFAULT_UDP_DETECT_INTERVAL				30
+#define DEFAULT_UDP_DETECT_INTERVAL				(60 * 1000)
 
 /* TCP Pack 包长度位数 */
 #define TCP_PACK_LENGTH_BITS					22
@@ -111,6 +117,8 @@
 #define IPV6_ADDR_SEPARATOR_CHAR				':'
 #define IPV6_ZONE_INDEX_CHAR					'%'
 
+#define ENSURE_STOP()							{if(GetState() != SS_STOPPED) Stop();}
+
 /************************************************************************
 名称：Windows Socket 组件初始化类
 描述：自动加载和卸载 Windows Socket 组件
@@ -122,7 +130,7 @@ public:
 	{
 		LPWSADATA lpTemp = lpWSAData;
 		if(!lpTemp)
-			lpTemp	= (LPWSADATA)_alloca(sizeof(WSADATA));
+			lpTemp	= CreateLocalObject(WSADATA);
 
 		m_iResult	= ::WSAStartup(MAKEWORD(majorVersion, minorVersion), lpTemp);
 	}
@@ -313,12 +321,12 @@ enum EnSocketCloseFlag
 template<class T> struct TBufferObjBase
 {
 	WSAOVERLAPPED		ov;
+	CPrivateHeap&		heap;
+
 	EnSocketOperation	operation;
 	WSABUF				buff;
 
 	int					capacity;
-	CPrivateHeap&		heap;
-
 	volatile LONG		sndCounter;
 
 	T* next;
@@ -375,7 +383,7 @@ template<class T> struct TBufferObjBase
 		return cat;
 	}
 
-	void Reset()	{buff.len = 0;}
+	void Reset()	{::ZeroMemory(&ov, sizeof(ov)); buff.len = 0;}
 	int Remain()	{return capacity - buff.len;}
 	BOOL IsFull()	{return Remain() == 0;}
 };
@@ -453,18 +461,24 @@ typedef TBufferObjListT<TBufferObj>		TBufferObjList;
 typedef TBufferObjListT<TUdpBufferObj>	TUdpBufferObjList;
 
 /* 数据缓冲区结构链表 */
-typedef CRingPool<TBufferObj>		TBufferObjPtrList;
+typedef CRingPool<TBufferObj>			TBufferObjPtrList;
 
 /* Udp 数据缓冲区结构链表 */
-typedef CRingPool<TUdpBufferObj>	TUdpBufferObjPtrList;
+typedef CRingPool<TUdpBufferObj>		TUdpBufferObjPtrList;
+
+/* TBufferObj 智能指针 */
+typedef TItemPtrT<TBufferObj>			TBufferObjPtr;
+/* TUdpBufferObj 智能指针 */
+typedef TItemPtrT<TUdpBufferObj>		TUdpBufferObjPtr;
 
 /* Socket 缓冲区基础结构 */
 struct TSocketObjBase
 {
-	static const long DEF_SNDBUFF_SIZE = 8192;
+	static const long DEF_SNDBUFF_SIZE = 16 * 1024;
+
+	CPrivateHeap& heap;
 
 	CONNID		connID;
-	BOOL		connected;
 	HP_SOCKADDR	remoteAddr;
 	PVOID		extra;
 	PVOID		reserved;
@@ -479,17 +493,15 @@ struct TSocketObjBase
 
 	DWORD		activeTime;
 
-	CCriSec		csSend;
-
-	long			sndBuffSize;
 	volatile BOOL	smooth;
 	volatile long	pending;
 	volatile long	sndCount;
 
+	volatile BOOL	connected;
 	volatile BOOL	paused;
 	volatile BOOL	recving;
 
-	CReentrantSpinGuard csRecv;
+	TSocketObjBase(CPrivateHeap& hp) : heap(hp) {}
 
 	static BOOL IsExist(TSocketObjBase* pSocketObj)
 		{return pSocketObj != nullptr;}
@@ -503,30 +515,21 @@ struct TSocketObjBase
 	static void Release(TSocketObjBase* pSocketObj)
 		{ASSERT(IsExist(pSocketObj)); pSocketObj->freeTime = ::TimeGetTime();}
 
+	DWORD GetConnTime	()	const	{return connTime;}
+	DWORD GetFreeTime	()	const	{return freeTime;}
+	DWORD GetActiveTime	()	const	{return activeTime;}
+	BOOL IsPaused		()	const	{return paused;}
+
 	long Pending()		{return pending;}
 	BOOL IsPending()	{return pending > 0;}
-	BOOL IsCanSend()	{return sndCount <= sndBuffSize;}
 	BOOL IsSmooth()		{return smooth;}
 	void TurnOnSmooth()	{smooth = TRUE;}
 
 	BOOL TurnOffSmooth()
 		{return ::InterlockedCompareExchange((volatile long*)&smooth, FALSE, TRUE) == TRUE;}
 	
-	BOOL ResetSndBuffSize(SOCKET socket)
-	{
-		int len = (int)(sizeof(sndBuffSize));
-		return getsockopt(socket, SOL_SOCKET, SO_SNDBUF, (CHAR*)&sndBuffSize, &len) != 0;
-	}
-
-	BOOL HasConnected()
-	{
-		return connected;
-	}
-
-	void SetConnected(BOOL bConnected = TRUE)
-	{
-		connected = bConnected;
-	}
+	BOOL HasConnected()							{return connected;}
+	void SetConnected(BOOL bConnected = TRUE)	{connected = bConnected;}
 
 	void Reset(CONNID dwConnID)
 	{
@@ -538,7 +541,6 @@ struct TSocketObjBase
 		recving		= FALSE;
 		pending		= 0;
 		sndCount	= 0;
-		sndBuffSize	= DEF_SNDBUFF_SIZE;
 		extra		= nullptr;
 		reserved	= nullptr;
 		reserved2	= nullptr;
@@ -548,14 +550,72 @@ struct TSocketObjBase
 /* 数据缓冲区结构 */
 struct TSocketObj : public TSocketObjBase
 {
+	CCriSec			csRecv;
+	CCriSec			csSend;
+	CSpinGuard		sgPause;
+
 	SOCKET			socket;
 	CStringA		host;
 	TBufferObjList	sndBuff;
+
+	BOOL IsCanSend() {return sndCount <= GetSendBufferSize();}
+
+	long GetSendBufferSize()
+	{
+		long lSize;
+		int len	= (int)(sizeof(lSize));
+		int rs	= getsockopt(socket, SOL_SOCKET, SO_SNDBUF, (CHAR*)&lSize, &len);
+
+		if(rs == SOCKET_ERROR || lSize <= 0)
+			lSize = DEF_SNDBUFF_SIZE;
+
+		return lSize;
+	}
+
+	static TSocketObj* Construct(CPrivateHeap& hp, CBufferObjPool& bfPool)
+	{
+		TSocketObj* pSocketObj = (TSocketObj*)hp.Alloc(sizeof(TSocketObj));
+		ASSERT(pSocketObj);
+
+		pSocketObj->TSocketObj::TSocketObj(hp, bfPool);
+
+		return pSocketObj;
+	}
+
+	static void Destruct(TSocketObj* pSocketObj)
+	{
+		ASSERT(pSocketObj);
+
+		CPrivateHeap& heap = pSocketObj->heap;
+		pSocketObj->TSocketObj::~TSocketObj();
+		heap.Free(pSocketObj);
+	}
 	
-	TSocketObj(CBufferObjPool& bfPool)
-	: sndBuff(bfPool)
+	TSocketObj(CPrivateHeap& hp, CBufferObjPool& bfPool)
+	: TSocketObjBase(hp), sndBuff(bfPool)
 	{
 
+	}
+
+	static BOOL InvalidSocketObj(TSocketObj* pSocketObj)
+	{
+		BOOL bDone = FALSE;
+
+		if(TSocketObj::IsValid(pSocketObj))
+		{
+			pSocketObj->SetConnected(FALSE);
+
+			CCriSecLock locallock(pSocketObj->csRecv);
+			CCriSecLock locallock2(pSocketObj->csSend);
+
+			if(TSocketObjBase::IsValid(pSocketObj))
+			{
+				TSocketObjBase::Invalid(pSocketObj);
+				bDone = TRUE;
+			}
+		}
+
+		return bDone;
 	}
 
 	static void Release(TSocketObj* pSocketObj)
@@ -588,13 +648,62 @@ struct TSocketObj : public TSocketObjBase
 /* UDP 数据缓冲区结构 */
 struct TUdpSocketObj : public TSocketObjBase
 {
+	PVOID				pHolder;
+	HANDLE				hTimer;
+
+	CRWLock				csRecv;
+	CCriSec				csSend;
+
 	TUdpBufferObjList	sndBuff;
 	volatile DWORD		detectFails;
 
-	TUdpSocketObj(CUdpBufferObjPool& bfPool)
-	: sndBuff(bfPool)
+	BOOL IsCanSend			() {return sndCount <= GetSendBufferSize();}
+	long GetSendBufferSize	() {return (4 * DEF_SNDBUFF_SIZE);}
+
+	static TUdpSocketObj* Construct(CPrivateHeap& hp, CUdpBufferObjPool& bfPool)
+	{
+		TUdpSocketObj* pSocketObj = (TUdpSocketObj*)hp.Alloc(sizeof(TUdpSocketObj));
+		ASSERT(pSocketObj);
+
+		pSocketObj->TUdpSocketObj::TUdpSocketObj(hp, bfPool);
+
+		return pSocketObj;
+	}
+
+	static void Destruct(TUdpSocketObj* pSocketObj)
+	{
+		ASSERT(pSocketObj);
+
+		CPrivateHeap& heap = pSocketObj->heap;
+		pSocketObj->TUdpSocketObj::~TUdpSocketObj();
+		heap.Free(pSocketObj);
+	}
+	
+	TUdpSocketObj(CPrivateHeap& hp, CUdpBufferObjPool& bfPool)
+	: TSocketObjBase(hp), sndBuff(bfPool)
 	{
 
+	}
+
+	static BOOL InvalidSocketObj(TUdpSocketObj* pSocketObj)
+	{
+		BOOL bDone = FALSE;
+
+		if(TUdpSocketObj::IsValid(pSocketObj))
+		{
+			pSocketObj->SetConnected(FALSE);
+
+			CReentrantWriteLock	locallock(pSocketObj->csRecv);
+			CCriSecLock			locallock2(pSocketObj->csSend);
+
+			if(TSocketObjBase::IsValid(pSocketObj))
+			{
+				TSocketObjBase::Invalid(pSocketObj);
+				bDone = TRUE;
+			}
+		}
+
+		return bDone;
 	}
 
 	static void Release(TUdpSocketObj* pSocketObj)
@@ -607,7 +716,10 @@ struct TUdpSocketObj : public TSocketObjBase
 	void Reset(CONNID dwConnID)
 	{
 		__super::Reset(dwConnID);
-		detectFails = 0;
+
+		pHolder		= nullptr;
+		hTimer		= nullptr;
+		detectFails	= 0;
 	}
 };
 
@@ -744,7 +856,8 @@ enum EnIocpCommand
 	IOCP_CMD_EXIT		= 0x00000000,	// 退出程序
 	IOCP_CMD_ACCEPT		= 0xFFFFFFF1,	// 接受连接
 	IOCP_CMD_DISCONNECT	= 0xFFFFFFF2,	// 断开连接
-	IOCP_CMD_SEND		= 0xFFFFFFF3	// 发送数据
+	IOCP_CMD_SEND		= 0xFFFFFFF3,	// 发送数据
+	IOCP_CMD_UNPAUSE	= 0xFFFFFFF4	// 取消暂停
 };
 
 /* IOCP 命令处理动作 */
@@ -760,6 +873,7 @@ BOOL PostIocpExit(HANDLE hIOCP);
 BOOL PostIocpAccept(HANDLE hIOCP);
 BOOL PostIocpDisconnect(HANDLE hIOCP, CONNID dwConnID);
 BOOL PostIocpSend(HANDLE hIOCP, CONNID dwConnID);
+BOOL PostIocpUnpause(HANDLE hIOCP, CONNID dwConnID);
 BOOL PostIocpClose(HANDLE hIOCP, CONNID dwConnID, int iErrorCode);
 
 /************************************************************************
@@ -783,6 +897,7 @@ int SSO_KeepAliveVals		(SOCKET sock, u_long onoff, u_long time, u_long interval)
 int SSO_RecvBuffSize		(SOCKET sock, int size);
 int SSO_SendBuffSize		(SOCKET sock, int size);
 int SSO_ReuseAddress		(SOCKET sock, BOOL bReuse = TRUE);
+int SSO_ExclusiveAddressUse	(SOCKET sock, BOOL bExclusive = TRUE);
 int SSO_UDP_ConnReset		(SOCKET sock, BOOL bNewBehavior = TRUE);
 
 /************************************************************************
@@ -800,7 +915,7 @@ int SSO_UDP_ConnReset		(SOCKET sock, BOOL bNewBehavior = TRUE);
 /* 生成 Connection ID */
 CONNID GenerateConnectionID	();
 /* 关闭 Socket */
-int ManualCloseSocket		(SOCKET sock, int iShutdownFlag = 0xFF, BOOL bGraceful = TRUE, BOOL bReuseAddress = FALSE);
+int ManualCloseSocket		(SOCKET sock, int iShutdownFlag = 0xFF, BOOL bGraceful = TRUE);
 /* 投递 AccceptEx()，并把 WSA_IO_PENDING 转换为 NO_ERROR */
 int PostAccept				(LPFN_ACCEPTEX pfnAcceptEx, SOCKET soListen, SOCKET soClient, TBufferObj* pBufferObj, ADDRESS_FAMILY usFamily);
 /* 投递 AccceptEx() */
@@ -829,3 +944,60 @@ int PostReceiveFromNotCheck	(SOCKET sock, TUdpBufferObj* pBufferObj);
 int NoBlockReceive(TBufferObj* pBufferObj);
 /* 执行非阻塞 WSARecv() */
 int NoBlockReceiveNotCheck(TBufferObj* pBufferObj);
+
+// CP_XXX -> UNICODE
+BOOL CodePageToUnicode(int iCodePage, const char szSrc[], WCHAR szDest[], int& iDestLength);
+// UNICODE -> CP_XXX
+BOOL UnicodeToCodePage(int iCodePage, const WCHAR szSrc[], char szDest[], int& iDestLength);
+// GBK -> UNICODE
+BOOL GbkToUnicode(const char szSrc[], WCHAR szDest[], int& iDestLength);
+// UNICODE -> GBK
+BOOL UnicodeToGbk(const WCHAR szSrc[], char szDest[], int& iDestLength);
+// UTF8 -> UNICODE
+BOOL Utf8ToUnicode(const char szSrc[], WCHAR szDest[], int& iDestLength);
+// UNICODE -> UTF8
+BOOL UnicodeToUtf8(const WCHAR szSrc[], char szDest[], int& iDestLength);
+// GBK -> UTF8
+BOOL GbkToUtf8(const char szSrc[], char szDest[], int& iDestLength);
+// UTF8 -> GBK
+BOOL Utf8ToGbk(const char szSrc[], char szDest[], int& iDestLength);
+
+#ifdef _ZLIB_SUPPORT
+
+// 普通压缩（返回值：0 -> 成功，-3 -> 输入数据不正确，-5 -> 输出缓冲区不足）
+int Compress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen);
+// 高级压缩（返回值：0 -> 成功，-3 -> 输入数据不正确，-5 -> 输出缓冲区不足）
+int CompressEx(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen, int iLevel = Z_DEFAULT_COMPRESSION, int iMethod = Z_DEFLATED, int iWindowBits = DEF_WBITS, int iMemLevel = DEF_MEM_LEVEL, int iStrategy = Z_DEFAULT_STRATEGY);
+// 普通解压（返回值：0 -> 成功，-3 -> 输入数据不正确，-5 -> 输出缓冲区不足）
+int Uncompress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen);
+// 高级解压（返回值：0 -> 成功，-3 -> 输入数据不正确，-5 -> 输出缓冲区不足）
+int UncompressEx(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen, int iWindowBits = DEF_WBITS);
+// 推测压缩结果长度
+DWORD GuessCompressBound(DWORD dwSrcLen, BOOL bGZip = FALSE);
+
+// Gzip 压缩（返回值：0 -> 成功，-3 -> 输入数据不正确，-5 -> 输出缓冲区不足）
+int GZipCompress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen);
+// Gzip 解压（返回值：0 -> 成功，-3 -> 输入数据不正确，-5 -> 输出缓冲区不足）
+int GZipUncompress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen);
+// 推测 Gzip 解压结果长度（如果返回 0 或不合理值则说明输入内容并非有效的 Gzip 格式）
+DWORD GZipGuessUncompressBound(const BYTE* lpszSrc, DWORD dwSrcLen);
+
+#endif
+
+// 计算 Base64 编码后长度
+DWORD GuessBase64EncodeBound(DWORD dwSrcLen);
+// 计算 Base64 解码后长度
+DWORD GuessBase64DecodeBound(const BYTE* lpszSrc, DWORD dwSrcLen);
+// Base64 编码（返回值：0 -> 成功，-3 -> 输入数据不正确，-5 -> 输出缓冲区不足）
+int Base64Encode(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen);
+// Base64 解码（返回值：0 -> 成功，-3 -> 输入数据不正确，-5 -> 输出缓冲区不足）
+int Base64Decode(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen);
+
+// 计算 URL 编码后长度
+DWORD GuessUrlEncodeBound(const BYTE* lpszSrc, DWORD dwSrcLen);
+// 计算 URL 解码后长度
+DWORD GuessUrlDecodeBound(const BYTE* lpszSrc, DWORD dwSrcLen);
+// URL 编码（返回值：0 -> 成功，-3 -> 输入数据不正确，-5 -> 输出缓冲区不足）
+int UrlEncode(BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen);
+// URL 解码（返回值：0 -> 成功，-3 -> 输入数据不正确，-5 -> 输出缓冲区不足）
+int UrlDecode(BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen);

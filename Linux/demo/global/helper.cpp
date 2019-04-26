@@ -1,18 +1,23 @@
 #include "helper.h"
 #include "../../src/common/FileHelper.h"
 
+#include <iostream>
+using namespace std;
+
 app_arg g_app_arg;
 
-char app_arg::OPTIONS[] = ":a:b:p:j:t:e:i:c:l:s:m:o:z:x:y:n:r:u:k:w:q:hv";
+char app_arg::OPTIONS[] = ":a:p:b:d:j:t:e:i:c:l:s:m:o:z:x:y:n:r:u:k:w:q:hv";
 
 app_arg::app_arg()
 {
 	// -a
 	remote_addr		= IPV4_LOOPBACK_ADDRESS;
-	// -b
-	bind_addr		= "";
 	// -p
 	port			= DEF_TCP_UDP_PORT;
+	// -b
+	bind_addr		= "";
+	// -d
+	local_port		= 0;
 	// -j
 	reject_addr		= "";
 	// -n
@@ -74,8 +79,9 @@ void app_arg::ParseArgs(int argc, char* const argv[])
 		switch(c)
 		{
 		case 'a': remote_addr		= strOptArg;						break;
-		case 'b': bind_addr			= strOptArg;						break;
 		case 'p': port				= (USHORT)atoi(strOptArg);			break;
+		case 'b': bind_addr			= strOptArg;						break;
+		case 'd': local_port		= (USHORT)atoi(strOptArg);			break;
 		case 'j': reject_addr		= strOptArg;						break;
 		case 'n': async				= (bool)atoi(strOptArg);			break;
 		case 't': thread_count		= (DWORD)atoi(strOptArg);			break;
@@ -107,13 +113,13 @@ void app_arg::PrintUsage()
 {
 	PRINTLN("-------------------------- Command Line Args -------------------------");
 	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "a", "remote_addr", "b", "bind_addr", "c", "conn_count");
-	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "e", "test_times", "h", "(PRINT THIS USAGE)", "i", "test_interval");
-	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "j", "reject_addr", "k", "ttl", "l", "data_length");
-	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "m", "max_conn", "n", "async", "o", "cast_mode");
-	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "p", "port", "q", "keep_alive", "r", "reuse_addr");
-	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "s", "send_policy", "t", "thread_count", "u", "ip_loop");
-	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "v", "(PRINT VERSION)", "w", "http_with_listener", "x", "http_port");
-	PRINTLN("-%s: %-20s-%s: %-20s"			, "y", "https_port", "z", "http_use_cookie");
+	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "d", "local_port", "e", "test_times", "h", "(PRINT THIS USAGE)");
+	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "i", "test_interval", "j", "reject_addr", "k", "ttl");
+	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "l", "data_length", "m", "max_conn", "n", "async");
+	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "o", "cast_mode", "p", "port", "q", "keep_alive");
+	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "r", "reuse_addr", "s", "send_policy", "t", "thread_count");
+	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "u", "ip_loop", "v", "(PRINT VERSION)", "w", "http_with_listener");
+	PRINTLN("-%s: %-20s-%s: %-20s-%s: %-20s", "x", "http_port", "y", "https_port", "z", "http_use_cookie");
 	PRINTLN("-----------------------------------------------------------------------");
 }
 
@@ -178,6 +184,27 @@ BOOL CCommandParser::WaitForExit()
 
 void CCommandParser::WorkerProc(PVOID pv)
 {
+	CString strLine;
+
+	PrintUsage();
+	printf("> ");
+
+	while(TRUE)
+	{
+		Reset();
+
+		if(!std::getline(cin, strLine))
+		{
+			PRINTLN();
+			break;
+		}
+
+		Parse((LPTSTR)(LPCTSTR)strLine, strLine.GetLength());
+
+		printf("> ");
+	}
+
+	/*
 	PrintUsage();
 
 	char* lpszLine	= nullptr;
@@ -197,6 +224,7 @@ void CCommandParser::WorkerProc(PVOID pv)
 			break;
 		}
 
+		lpszLine[--nRead] = 0;
 		Parse(lpszLine, nRead);
 
 		printf("> ");
@@ -211,12 +239,12 @@ void CCommandParser::WorkerProc(PVOID pv)
 	}
 
 	free(lpszLine);
+
+	*/
 }
 
 void CCommandParser::Parse(LPTSTR lpszLine, SSIZE_T nLength)
 {
-	lpszLine[nLength - 1] = 0;
-
 	LPTSTR lpszArg = lpszLine;
 	LPTSTR lpszCmd = ::StrSep2(&lpszArg, " \t");
 
@@ -1227,7 +1255,7 @@ void LogAgentStartFail(DWORD code, LPCTSTR lpszDesc, LPCTSTR lpszName)
 void LogAgentStopping(CONNID dwConnID, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %sAgent Stopping --> (%Iu)"), (LPCTSTR)SafeString(lpszName), dwConnID);
+	msg.Format(_T("# %sAgent Stopping --> (%zu)"), (LPCTSTR)SafeString(lpszName), dwConnID);
 	LogMsg(msg);
 }
 
@@ -1277,7 +1305,7 @@ void LogClientStartFail(DWORD code, LPCTSTR lpszDesc, LPCTSTR lpszName)
 void LogClientStopping(CONNID dwConnID, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %sClient Stopping --> (%Iu)"), (LPCTSTR)SafeString(lpszName), dwConnID);
+	msg.Format(_T("# %sClient Stopping --> (%zu)"), (LPCTSTR)SafeString(lpszName), dwConnID);
 	LogMsg(msg);
 }
 
@@ -1306,49 +1334,49 @@ void LogClientSendFail(int iSequence, int iSocketIndex, DWORD code, LPCTSTR lpsz
 void LogSend(CONNID dwConnID, LPCTSTR lpszContent, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu Send OK --> %s"), (LPCTSTR)SafeString2(lpszName), dwConnID, lpszContent);
+	msg.Format(_T("# %s%zu Send OK --> %s"), (LPCTSTR)SafeString2(lpszName), dwConnID, lpszContent);
 	LogMsg(msg);
 }
 
 void LogSending(CONNID dwConnID, LPCTSTR lpszContent, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu Sending --> %s"), (LPCTSTR)SafeString2(lpszName), dwConnID, lpszContent);
+	msg.Format(_T("# %s%zu Sending --> %s"), (LPCTSTR)SafeString2(lpszName), dwConnID, lpszContent);
 	LogMsg(msg);
 }
 
 void LogSendFail(CONNID dwConnID, DWORD code, LPCTSTR lpszDesc, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu Send Fail --> %s (%d)"), (LPCTSTR)SafeString2(lpszName), dwConnID, lpszDesc, code);
+	msg.Format(_T("# %s%zu Send Fail --> %s (%d)"), (LPCTSTR)SafeString2(lpszName), dwConnID, lpszDesc, code);
 	LogMsg(msg);
 }
 
 void LogDisconnect(CONNID dwConnID, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu, Disconnect OK"), (LPCTSTR)SafeString2(lpszName), dwConnID);
+	msg.Format(_T("# %s%zu, Disconnect OK"), (LPCTSTR)SafeString2(lpszName), dwConnID);
 	LogMsg(msg);
 }
 
 void LogDisconnectFail(CONNID dwConnID, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu, Disconnect Fail"), (LPCTSTR)SafeString2(lpszName), dwConnID);
+	msg.Format(_T("# %s%zu, Disconnect Fail"), (LPCTSTR)SafeString2(lpszName), dwConnID);
 	LogMsg(msg);
 }
 
 void LogDisconnect2(CONNID dwConnID, BOOL bForce, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu, Disconnect OK (%c)"), (LPCTSTR)SafeString2(lpszName), dwConnID, bForce ? 'F' : 'N');
+	msg.Format(_T("# %s%zu, Disconnect OK (%c)"), (LPCTSTR)SafeString2(lpszName), dwConnID, bForce ? 'F' : 'N');
 	LogMsg(msg);
 }
 
 void LogDisconnectFail2(CONNID dwConnID, BOOL bForce, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu, Disconnect Fail (%c)"), (LPCTSTR)SafeString2(lpszName), dwConnID, bForce ? 'F' : 'N');
+	msg.Format(_T("# %s%zu, Disconnect Fail (%c)"), (LPCTSTR)SafeString2(lpszName), dwConnID, bForce ? 'F' : 'N');
 	LogMsg(msg);
 }
 
@@ -1369,14 +1397,14 @@ void LogDisconnectFailLong(DWORD dwSeconds, BOOL bForce, LPCTSTR lpszName)
 void LogPause(CONNID dwConnID, BOOL bPause, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu, %s OK"), (LPCTSTR)SafeString2(lpszName), dwConnID, bPause ? "Pause" : "Unpause");
+	msg.Format(_T("# %s%zu, %s OK"), (LPCTSTR)SafeString2(lpszName), dwConnID, bPause ? "Pause" : "Unpause");
 	LogMsg(msg);
 }
 
 void LogPauseFail(CONNID dwConnID, BOOL bPause, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu, %s Fail --> %s (%d)"), (LPCTSTR)SafeString2(lpszName), dwConnID, bPause ? "Pause" : "Unpause", ::GetLastErrorStr(), ::GetLastError());
+	msg.Format(_T("# %s%zu, %s Fail --> %s (%d)"), (LPCTSTR)SafeString2(lpszName), dwConnID, bPause ? "Pause" : "Unpause", ::GetLastErrorStr(), ::GetLastError());
 	LogMsg(msg);
 }
 
@@ -1397,35 +1425,35 @@ void LogConnectFail(DWORD code, LPCTSTR lpszDesc, LPCTSTR lpszName)
 void LogRelease(CONNID dwConnID, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu, Release OK"), (LPCTSTR)SafeString2(lpszName), dwConnID);
+	msg.Format(_T("# %s%zu, Release OK"), (LPCTSTR)SafeString2(lpszName), dwConnID);
 	LogMsg(msg);
 }
 
 void LogReleaseFail(CONNID dwConnID, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu, Release Fail"), (LPCTSTR)SafeString2(lpszName), dwConnID);
+	msg.Format(_T("# %s%zu, Release Fail"), (LPCTSTR)SafeString2(lpszName), dwConnID);
 	LogMsg(msg);
 }
 
 void LogDetect(CONNID dwConnID, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu, Detect Connection OK"), (LPCTSTR)SafeString2(lpszName), dwConnID);
+	msg.Format(_T("# %s%zu, Detect Connection OK"), (LPCTSTR)SafeString2(lpszName), dwConnID);
 	LogMsg(msg);
 }
 
 void LogDetectFail(CONNID dwConnID, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("# %s%Iu, Detect Connection Fail"), (LPCTSTR)SafeString2(lpszName), dwConnID);
+	msg.Format(_T("# %s%zu, Detect Connection Fail"), (LPCTSTR)SafeString2(lpszName), dwConnID);
 	LogMsg(msg);
 }
 
 void LogOnConnect(CONNID dwConnID, const CString& strAddress, USHORT usPort, LPCTSTR lpszName)
 {
 	LPTSTR lpszContent = new TCHAR[100];
-	wsprintf(lpszContent, _T("local address: %s#%d"), strAddress, usPort);
+	wsprintf(lpszContent, _T("local address: %s#%d"), (LPCTSTR)strAddress, usPort);
 	int content_len = lstrlen(lpszContent);
 	info_msg* msg = info_msg::Construct(dwConnID, EVT_ON_CONNECT, content_len, lpszContent, lpszName);
 
@@ -1435,14 +1463,14 @@ void LogOnConnect(CONNID dwConnID, const CString& strAddress, USHORT usPort, LPC
 void LogOnConnect2(CONNID dwConnID, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("  > [ %s%Iu, %s ]"), (LPCTSTR)SafeString2(lpszName), dwConnID, EVT_ON_CONNECT);
+	msg.Format(_T("  > [ %s%zu, %s ]"), (LPCTSTR)SafeString2(lpszName), dwConnID, EVT_ON_CONNECT);
 	LogMsg(msg);
 }
 
 void LogOnConnect3(CONNID dwConnID, const CString& strAddress, USHORT usPort, LPCTSTR lpszName)
 {
 	LPTSTR lpszContent = new TCHAR[100];
-	wsprintf(lpszContent, _T("remote address: %s#%d"), strAddress, usPort);
+	wsprintf(lpszContent, _T("remote address: %s#%d"), (LPCTSTR)strAddress, usPort);
 	int content_len = lstrlen(lpszContent);
 	info_msg* msg = info_msg::Construct(dwConnID, EVT_ON_CONNECT, content_len, lpszContent, lpszName);
 
@@ -1452,7 +1480,7 @@ void LogOnConnect3(CONNID dwConnID, const CString& strAddress, USHORT usPort, LP
 void LogOnHandShake2(CONNID dwConnID, LPCTSTR lpszName)
 {
 	CString msg;
-	msg.Format(_T("  > [ %s%Iu, %s ]"), (LPCTSTR)SafeString2(lpszName), dwConnID, EVT_ON_HAND_SHAKE);
+	msg.Format(_T("  > [ %s%zu, %s ]"), (LPCTSTR)SafeString2(lpszName), dwConnID, EVT_ON_HAND_SHAKE);
 	LogMsg(msg);
 }
 
@@ -1804,9 +1832,9 @@ void LogInfoMsg(info_msg* pInfoMsg)
 		if(pInfoMsg->connID > 0)
 		{
 			if(pInfoMsg->contentLength > 0)
-				msg.Format(_T("[ %s #%Iu, %s ] -> %s"), pInfoMsg->name, pInfoMsg->connID, pInfoMsg->evt, pInfoMsg->content);
+				msg.Format(_T("[ %s #%zu, %s ] -> %s"), pInfoMsg->name, pInfoMsg->connID, pInfoMsg->evt, pInfoMsg->content);
 			else
-				msg.Format(_T("[ %s #%Iu, %s ]"), pInfoMsg->name, pInfoMsg->connID, pInfoMsg->evt);
+				msg.Format(_T("[ %s #%zu, %s ]"), pInfoMsg->name, pInfoMsg->connID, pInfoMsg->evt);
 		}
 		else
 		{
@@ -1821,9 +1849,9 @@ void LogInfoMsg(info_msg* pInfoMsg)
 		if(pInfoMsg->connID > 0)
 		{
 			if(pInfoMsg->contentLength > 0)
-				msg.Format(_T("[ %Iu, %s ] -> %s"), pInfoMsg->connID, pInfoMsg->evt, pInfoMsg->content);
+				msg.Format(_T("[ %zu, %s ] -> %s"), pInfoMsg->connID, pInfoMsg->evt, pInfoMsg->content);
 			else
-				msg.Format(_T("[ %Iu, %s ]"), pInfoMsg->connID, pInfoMsg->evt);
+				msg.Format(_T("[ %zu, %s ]"), pInfoMsg->connID, pInfoMsg->evt);
 		}
 		else
 		{

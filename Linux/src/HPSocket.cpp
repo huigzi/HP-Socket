@@ -31,9 +31,15 @@
 #include "TcpPackServer.h"
 #include "TcpPackClient.h"
 #include "TcpPackAgent.h"
+#include "HPThreadPool.h"
+
+#ifdef _UDP_SUPPORT
 #include "UdpServer.h"
 #include "UdpClient.h"
 #include "UdpCast.h"
+#include "UdpArqServer.h"
+#include "UdpArqClient.h"
+#endif
 
 #ifdef _HTTP_SUPPORT
 #include "HttpServer.h"
@@ -90,21 +96,6 @@ HPSOCKET_API ITcpPackClient* HP_Create_TcpPackClient(ITcpClientListener* pListen
 	return (ITcpPackClient*)(new CTcpPackClient(pListener));
 }
 
-HPSOCKET_API IUdpServer* HP_Create_UdpServer(IUdpServerListener* pListener)
-{
-	return new CUdpServer(pListener);
-}
-
-HPSOCKET_API IUdpClient* HP_Create_UdpClient(IUdpClientListener* pListener)
-{
-	return new CUdpClient(pListener);
-}
-
-HPSOCKET_API IUdpCast* HP_Create_UdpCast(IUdpCastListener* pListener)
-{
-	return new CUdpCast(pListener);
-}
-
 HPSOCKET_API void HP_Destroy_TcpServer(ITcpServer* pServer)
 {
 	delete pServer;
@@ -150,6 +141,33 @@ HPSOCKET_API void HP_Destroy_TcpPackClient(ITcpPackClient* pClient)
 	delete pClient;
 }
 
+#ifdef _UDP_SUPPORT
+
+HPSOCKET_API IUdpServer* HP_Create_UdpServer(IUdpServerListener* pListener)
+{
+	return new CUdpServer(pListener);
+}
+
+HPSOCKET_API IUdpClient* HP_Create_UdpClient(IUdpClientListener* pListener)
+{
+	return new CUdpClient(pListener);
+}
+
+HPSOCKET_API IUdpCast* HP_Create_UdpCast(IUdpCastListener* pListener)
+{
+	return new CUdpCast(pListener);
+}
+
+HPSOCKET_API IUdpArqServer* HP_Create_UdpArqServer(IUdpServerListener* pListener)
+{
+	return (IUdpArqServer*)(new CUdpArqServer(pListener));
+}
+
+HPSOCKET_API IUdpArqClient* HP_Create_UdpArqClient(IUdpClientListener* pListener)
+{
+	return (IUdpArqClient*)(new CUdpArqClient(pListener));
+}
+
 HPSOCKET_API void HP_Destroy_UdpServer(IUdpServer* pServer)
 {
 	delete pServer;
@@ -164,6 +182,18 @@ HPSOCKET_API void HP_Destroy_UdpCast(IUdpCast* pCast)
 {
 	delete pCast;
 }
+
+HPSOCKET_API void HP_Destroy_UdpArqServer(IUdpArqServer* pServer)
+{
+	delete pServer;
+}
+
+HPSOCKET_API void HP_Destroy_UdpArqClient(IUdpArqClient* pClient)
+{
+	delete pClient;
+}
+
+#endif
 
 /*****************************************************************************************************************************************************/
 /*************************************************************** Global Function Exports *************************************************************/
@@ -284,6 +314,23 @@ HPSOCKET_API ULONGLONG SYS_HToN64(ULONGLONG value)
 	return ::HToN64(value);
 }
 
+HPSOCKET_API LPBYTE SYS_Malloc(int size)
+{
+	return MALLOC(BYTE, size);
+}
+
+HPSOCKET_API LPBYTE SYS_Realloc(LPBYTE p, int size)
+{
+	return REALLOC(p, BYTE, size);
+}
+
+HPSOCKET_API VOID SYS_Free(LPBYTE p)
+{
+	FREE(p);
+}
+
+#ifdef _ICONV_SUPPORT
+
 HPSOCKET_API BOOL SYS_CharsetConvert(LPCSTR lpszFromCharset, LPCSTR lpszToCharset, LPCSTR lpszInBuf, int iInBufLen, LPSTR lpszOutBuf, int& iOutBufLen)
 {
 	return ::CharsetConvert(lpszFromCharset, lpszToCharset, lpszInBuf, iInBufLen, lpszOutBuf, iOutBufLen);
@@ -318,6 +365,52 @@ HPSOCKET_API BOOL SYS_Utf8ToGbk(const char szSrc[], char szDest[], int& iDestLen
 {
 	return ::Utf8ToGbk(szSrc, szDest, iDestLength);
 }
+
+#endif
+
+#ifdef _ZLIB_SUPPORT
+
+HPSOCKET_API int SYS_Compress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen)
+{
+	return ::Compress(lpszSrc, dwSrcLen, lpszDest, dwDestLen);
+}
+
+HPSOCKET_API int SYS_CompressEx(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen, int iLevel, int iMethod, int iWindowBits, int iMemLevel, int iStrategy)
+{
+	return ::CompressEx(lpszSrc, dwSrcLen, lpszDest, dwDestLen, iLevel, iMethod, iWindowBits, iMemLevel, iStrategy);
+}
+
+HPSOCKET_API int SYS_Uncompress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen)
+{
+	return ::Uncompress(lpszSrc, dwSrcLen, lpszDest, dwDestLen);
+}
+
+HPSOCKET_API int SYS_UncompressEx(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen, int iWindowBits)
+{
+	return ::UncompressEx(lpszSrc, dwSrcLen, lpszDest, dwDestLen, iWindowBits);
+}
+
+HPSOCKET_API DWORD SYS_GuessCompressBound(DWORD dwSrcLen, BOOL bGZip)
+{
+	return ::GuessCompressBound(dwSrcLen, bGZip);
+}
+
+HPSOCKET_API int SYS_GZipCompress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen)
+{
+	return ::GZipCompress(lpszSrc, dwSrcLen, lpszDest, dwDestLen);
+}
+
+HPSOCKET_API int SYS_GZipUncompress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen)
+{
+	return ::GZipUncompress(lpszSrc, dwSrcLen, lpszDest, dwDestLen);
+}
+
+HPSOCKET_API DWORD SYS_GZipGuessUncompressBound(const BYTE* lpszSrc, DWORD dwSrcLen)
+{
+	return ::GZipGuessUncompressBound(lpszSrc, dwSrcLen);
+}
+
+#endif
 
 HPSOCKET_API DWORD SYS_GuessBase64EncodeBound(DWORD dwSrcLen)
 {
@@ -482,44 +575,28 @@ HPSOCKET_API int HP_HttpCookie_HLP_ExpiresToMaxAge(__time64_t tmExpires)
 /************************************************************ HTTP Global Function Exports ***********************************************************/
 /*****************************************************************************************************************************************************/
 
-HPSOCKET_API int SYS_Compress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen)
-{
-	return ::Compress(lpszSrc, dwSrcLen, lpszDest, dwDestLen);
-}
-
-HPSOCKET_API int SYS_CompressEx(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen, int iLevel, int iMethod, int iWindowBits, int iMemLevel, int iStrategy)
-{
-	return ::CompressEx(lpszSrc, dwSrcLen, lpszDest, dwDestLen, iLevel, iMethod, iWindowBits, iMemLevel, iStrategy);
-}
-
-HPSOCKET_API int SYS_Uncompress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen)
-{
-	return ::Uncompress(lpszSrc, dwSrcLen, lpszDest, dwDestLen);
-}
-
-HPSOCKET_API int SYS_UncompressEx(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen, int iWindowBits)
-{
-	return ::UncompressEx(lpszSrc, dwSrcLen, lpszDest, dwDestLen, iWindowBits);
-}
-
-HPSOCKET_API DWORD SYS_GuessCompressBound(DWORD dwSrcLen, BOOL bGZip)
-{
-	return ::GuessCompressBound(dwSrcLen, bGZip);
-}
-
-HPSOCKET_API int SYS_GZipCompress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen)
-{
-	return ::GZipCompress(lpszSrc, dwSrcLen, lpszDest, dwDestLen);
-}
-
-HPSOCKET_API int SYS_GZipUncompress(const BYTE* lpszSrc, DWORD dwSrcLen, BYTE* lpszDest, DWORD& dwDestLen)
-{
-	return ::GZipUncompress(lpszSrc, dwSrcLen, lpszDest, dwDestLen);
-}
-
-HPSOCKET_API DWORD SYS_GZipGuessUncompressBound(const BYTE* lpszSrc, DWORD dwSrcLen)
-{
-	return ::GZipGuessUncompressBound(lpszSrc, dwSrcLen);
-}
-
 #endif
+
+/*****************************************************************************************************************************************************/
+/**************************************************************** Thread Pool Exports ****************************************************************/
+/*****************************************************************************************************************************************************/
+
+HPSOCKET_API IHPThreadPool* HP_Create_ThreadPool()
+{
+	return new CHPThreadPool;
+}
+
+HPSOCKET_API void HP_Destroy_ThreadPool(IHPThreadPool* pThreadPool)
+{
+	delete pThreadPool;
+}
+
+HPSOCKET_API LPTSocketTask HP_Create_SocketTaskObj(Fn_SocketTaskProc fnTaskProc, PVOID pSender, CONNID dwConnID, LPCBYTE pBuffer, INT iBuffLen, EnTaskBufferType enBuffType, WPARAM wParam, LPARAM lParam)
+{
+	return ::CreateSocketTaskObj(fnTaskProc, pSender, dwConnID, pBuffer, iBuffLen, enBuffType, wParam, lParam);
+}
+
+HPSOCKET_API void HP_Destroy_SocketTaskObj(LPTSocketTask pTask)
+{
+	::DestroySocketTaskObj(pTask);
+}

@@ -59,7 +59,12 @@ public:
 
 	virtual BOOL SendWSMessage(BOOL bFinal, BYTE iReserved, BYTE iOperationCode, const BYTE lpszMask[4] = nullptr, BYTE* pData = nullptr, int iLength = 0, ULONGLONG ullBodyLen = 0);
 
+	virtual BOOL StartHttp();
+
 public:
+	virtual void SetHttpAutoStart(BOOL bAutoStart)				{m_bHttpAutoStart = bAutoStart;}
+	virtual BOOL IsHttpAutoStart()								{return m_bHttpAutoStart;}
+
 	virtual void SetUseCookie(BOOL bUseCookie)					{m_pCookieMgr = bUseCookie ? &g_CookieMgr : nullptr;}
 	virtual BOOL IsUseCookie()									{return m_pCookieMgr != nullptr;}
 
@@ -108,8 +113,26 @@ public:
 private:
 	virtual BOOL CheckParams();
 
+	void DoStartHttp()
+		{m_objHttp.SetValid(TRUE);}
+
+	virtual EnHandleResult FireConnect()
+		{return m_bHttpAutoStart ? __super::FireConnect() : __super::DoFireConnect(this);}
+
+	virtual EnHandleResult DoFireConnect(ITcpClient* pSender)
+	{
+		ASSERT(pSender == this);
+
+		EnHandleResult result = __super::DoFireConnect(this);
+
+		if(result != HR_ERROR)
+			DoStartHttp();
+
+		return result;
+	}
+
 	virtual EnHandleResult DoFireReceive(ITcpClient* pSender, const BYTE* pData, int iLength)
-		{ASSERT(pSender == this); return m_objHttp.Execute(pData, iLength);}
+		{ASSERT(pSender == this); return m_objHttp.IsValid() ? m_objHttp.Execute(pData, iLength) : __super::DoFireReceive(pSender, pData, iLength);}
 
 	EnHandleResult DoFireSuperReceive(IHttpClient* pSender, const BYTE* pData, int iLength)
 		{ASSERT(pSender == (IHttpClient*)this); return __super::DoFireReceive(pSender, pData, iLength);}
@@ -168,6 +191,7 @@ public:
 	: T					(pListener)
 	, m_pListener		(pListener)
 	, m_pCookieMgr		(&g_CookieMgr)
+	, m_bHttpAutoStart	(TRUE)
 	, m_enLocalVersion	(DEFAULT_HTTP_VERSION)
 	, m_objHttp			(FALSE, this, (IHttpClient*)this)
 	{
@@ -176,17 +200,20 @@ public:
 
 	virtual ~CHttpClientT()
 	{
-		Stop();
+		ENSURE_STOP();
 	}
 
-protected:
-	THttpObj				m_objHttp;
-
 private:
+	BOOL					m_bHttpAutoStart;
+
 	IHttpClientListener*	m_pListener;
 	CCookieMgr*				m_pCookieMgr;
 	EnHttpVersion			m_enLocalVersion;
 
+	CCriSec					m_csHttp;
+
+protected:
+	THttpObj				m_objHttp;
 };
 
 // ------------------------------------------------------------------------------------------------------------- //
@@ -194,7 +221,7 @@ private:
 template<class T, USHORT default_port> class CHttpSyncClientT : public CHttpClientT<IHttpSyncRequester, T, default_port>, private CHttpClientListener
 {
 public:
-	virtual BOOL Start(LPCTSTR lpszRemoteAddress, USHORT usPort, BOOL bAsyncConnect = TRUE, LPCTSTR lpszBindAddress = nullptr);
+	virtual BOOL Start(LPCTSTR lpszRemoteAddress, USHORT usPort, BOOL bAsyncConnect = TRUE, LPCTSTR lpszBindAddress = nullptr, USHORT usLocalPort = 0);
 public:
 	virtual BOOL SendRequest(LPCSTR lpszMethod, LPCSTR lpszPath, const THeader lpHeaders[] = nullptr, int iHeaderCount = 0, const BYTE* pBody = nullptr, int iLength = 0);
 	virtual BOOL SendWSMessage(BOOL bFinal, BYTE iReserved, BYTE iOperationCode, const BYTE lpszMask[4] = nullptr, BYTE* pData = nullptr, int iLength = 0, ULONGLONG ullBodyLen = 0);
@@ -267,6 +294,7 @@ private:
 	virtual EnHandleResult OnPrepareConnect(ITcpClient* pSender, CONNID dwConnID, SOCKET socket);
 	virtual EnHandleResult OnConnect(ITcpClient* pSender, CONNID dwConnID);
 	virtual EnHandleResult OnSend(ITcpClient* pSender, CONNID dwConnID, const BYTE* pData, int iLength);
+	virtual EnHandleResult OnReceive(ITcpClient* pSender, CONNID dwConnID, const BYTE* pData, int iLength);
 
 	virtual EnHttpParseResult OnMessageBegin(IHttpClient* pSender, CONNID dwConnID);
 	virtual EnHttpParseResult OnStatusLine(IHttpClient* pSender, CONNID dwConnID, USHORT usStatusCode, LPCSTR lpszDesc);
@@ -276,7 +304,6 @@ private:
 	virtual EnHttpParseResult OnChunkComplete(IHttpClient* pSender, CONNID dwConnID);
 
 	virtual EnHandleResult OnWSMessageHeader(IHttpClient* pSender, CONNID dwConnID, BOOL bFinal, BYTE iReserved, BYTE iOperationCode, const BYTE lpszMask[4], ULONGLONG ullBodyLen);
-
 
 private:
 	void SetRequestEvent(EnHttpSyncRequestProgress enProgress, BOOL bCopyHttpObj = TRUE);

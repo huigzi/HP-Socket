@@ -155,6 +155,9 @@ HPSOCKET_API void __HP_CALL Destroy_HP_SSLPackClient(HP_SSLPackClient pClient)
 /*************************************************************** Global Function Exports *************************************************************/
 /*****************************************************************************************************************************************************/
 
+/***************************************************************************************/
+/************************************ SSL 初始化方法 ************************************/
+
 HPSOCKET_API void __HP_CALL HP_SSL_RemoveThreadLocalState(THR_ID dwThreadID)
 {
 	CSSLContext::RemoveThreadLocalState(dwThreadID);
@@ -193,6 +196,54 @@ HPSOCKET_API BOOL __HP_CALL HP_SSLClient_SetupSSLContext(HP_SSLClient pClient, i
 HPSOCKET_API void __HP_CALL HP_SSLClient_CleanupSSLContext(HP_SSLClient pClient)
 {
 	C_HP_Object::ToSecond<ITcpClient>(pClient)->CleanupSSLContext();
+}
+
+/***************************************************************************************/
+/************************************* SSL 操作方法 ************************************/
+
+HPSOCKET_API BOOL __HP_CALL HP_SSLServer_StartSSLHandShake(HP_SSLServer pServer, HP_CONNID dwConnID)
+{
+	return C_HP_Object::ToSecond<ITcpServer>(pServer)->StartSSLHandShake(dwConnID);
+}
+
+HPSOCKET_API void __HP_CALL HP_SSLServer_SetSSLAutoHandShake(HP_SSLServer pServer, BOOL bAutoHandShake)
+{
+	return C_HP_Object::ToSecond<ITcpServer>(pServer)->SetSSLAutoHandShake(bAutoHandShake);
+}
+
+HPSOCKET_API BOOL __HP_CALL HP_SSLServer_IsSSLAutoHandShake(HP_SSLServer pServer)
+{
+	return C_HP_Object::ToSecond<ITcpServer>(pServer)->IsSSLAutoHandShake();
+}
+
+HPSOCKET_API BOOL __HP_CALL HP_SSLAgent_StartSSLHandShake(HP_SSLAgent pAgent, HP_CONNID dwConnID)
+{
+	return C_HP_Object::ToSecond<ITcpAgent>(pAgent)->StartSSLHandShake(dwConnID);
+}
+
+HPSOCKET_API void __HP_CALL HP_SSLAgent_SetSSLAutoHandShake(HP_SSLAgent pAgent, BOOL bAutoHandShake)
+{
+	return C_HP_Object::ToSecond<ITcpAgent>(pAgent)->SetSSLAutoHandShake(bAutoHandShake);
+}
+
+HPSOCKET_API BOOL __HP_CALL HP_SSLAgent_IsSSLAutoHandShake(HP_SSLAgent pAgent)
+{
+	return C_HP_Object::ToSecond<ITcpAgent>(pAgent)->IsSSLAutoHandShake();
+}
+
+HPSOCKET_API BOOL __HP_CALL HP_SSLClient_StartSSLHandShake(HP_SSLClient pClient)
+{
+	return C_HP_Object::ToSecond<ITcpClient>(pClient)->StartSSLHandShake();
+}
+
+HPSOCKET_API void __HP_CALL HP_SSLClient_SetSSLAutoHandShake(HP_SSLClient pClient, BOOL bAutoHandShake)
+{
+	return C_HP_Object::ToSecond<ITcpClient>(pClient)->SetSSLAutoHandShake(bAutoHandShake);
+}
+
+HPSOCKET_API BOOL __HP_CALL HP_SSLClient_IsSSLAutoHandShake(HP_SSLClient pClient)
+{
+	return C_HP_Object::ToSecond<ITcpClient>(pClient)->IsSSLAutoHandShake();
 }
 
 /*****************************************************************************************************************************************************/

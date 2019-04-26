@@ -8,7 +8,6 @@
 #include "../../src/HPTypeDef.h"
 #endif
 
-#include <cstdio>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -56,7 +55,7 @@
 #define DEF_HTTP_PORT			8080
 #define DEF_HTTPS_PORT			8443
 
-#define TCP_KEEPALIVE_TIME		(30 * 1000)
+#define TCP_KEEPALIVE_TIME		(60 * 1000)
 #define UDP_DETECT_ATTEMPTS		3
 
 enum EnAppState
@@ -70,10 +69,12 @@ struct app_arg
 
 	// -a
 	CString remote_addr;
-	// -b
-	CString bind_addr;
 	// -p
 	USHORT port;
+	// -b
+	CString bind_addr;
+	// -d
+	USHORT local_port;
 	// -j
 	CString reject_addr;
 	// -n

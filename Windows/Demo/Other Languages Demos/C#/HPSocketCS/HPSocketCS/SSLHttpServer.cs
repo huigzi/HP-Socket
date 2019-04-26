@@ -8,13 +8,18 @@ namespace HPSocketCS
 {
     public class HttpsServer : SSLHttpServer
     {
+        public HttpsServer()
+           : base()
+        {
 
+        }
+        public HttpsServer(SSLVerifyMode verifyModel, string pemCertFile, string pemKeyFile, string keyPasswod, string caPemCertFileOrPath, SSLSdk.SNIServerNameCallback sniServerNameCallback)
+             : base(verifyModel,pemCertFile, pemKeyFile,keyPasswod,caPemCertFileOrPath, sniServerNameCallback)
+        {
+        }
     }
     public class SSLHttpServer : HttpServer
     {
-        static int ObjectReferer = 0;
-        static string SSLInitLock = "SSL初始化锁";
-
         /// <summary>
         /// 验证模式
         /// </summary>
@@ -51,33 +56,27 @@ namespace HPSocketCS
 
         public SSLHttpServer()
         {
-            Interlocked.Increment(ref ObjectReferer);
         }
 
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="_verifyModel">验证模式</param>
-        /// <param name="_pemCertFile">证书文件</param>
-        /// <param name="_pemKeyFile">私钥文件</param>
-        /// <param name="_keyPasswod">私钥密码（没有密码则为空）</param>
-        /// <param name="_caPemCertFileOrPath">CA 证书文件或目录（单向验证或客户端可选）</param>
-        public SSLHttpServer(SSLVerifyMode _verifyModel, string _pemCertFile, string _pemKeyFile, string _keyPasswod, string _caPemCertFileOrPath, SSLSdk.SNIServerNameCallback _sniServerNameCallba)
+        /// <param name="verifyModel">验证模式</param>
+        /// <param name="pemCertFile">证书文件</param>
+        /// <param name="pemKeyFile">私钥文件</param>
+        /// <param name="keyPasswod">私钥密码（没有密码则为空）</param>
+        /// <param name="caPemCertFileOrPath">CA 证书文件或目录（单向验证或客户端可选）</param>
+        public SSLHttpServer(SSLVerifyMode verifyModel, string pemCertFile, string pemKeyFile, string keyPasswod, string caPemCertFileOrPath, SSLSdk.SNIServerNameCallback sniServerNameCallback)
         {
-            Interlocked.Increment(ref ObjectReferer);
-            this.VerifyMode = _verifyModel;
-            this.PemCertFile = _pemCertFile;
-            this.PemKeyFile = _pemKeyFile;
-            this.KeyPasswod = _keyPasswod;
-            this.CAPemCertFileOrPath = _caPemCertFileOrPath;
-            this.SNIServerNameCallback = _sniServerNameCallba;
-            // Initialize();
-        }
+            this.VerifyMode = verifyModel;
+            this.PemCertFile = pemCertFile;
+            this.PemKeyFile = pemKeyFile;
+            this.KeyPasswod = keyPasswod;
+            this.CAPemCertFileOrPath = caPemCertFileOrPath;
+            this.SNIServerNameCallback = sniServerNameCallback;
 
-        ~SSLHttpServer()
-        {
-            //Uninitialize();
         }
+        
 
         protected override bool CreateListener()
         {
@@ -109,20 +108,18 @@ namespace HPSocketCS
         /// <returns></returns>
         public virtual bool Initialize()
         {
-            lock (SSLInitLock)
+            if (pServer != IntPtr.Zero)
             {
-                //if (SSLSdk.HP_SSL_IsValid() == false)
-                {
-                    PemCertFile = string.IsNullOrWhiteSpace(PemCertFile) ? null : PemCertFile;
-                    PemKeyFile = string.IsNullOrWhiteSpace(PemKeyFile) ? null : PemKeyFile;
-                    KeyPasswod = string.IsNullOrWhiteSpace(KeyPasswod) ? null : KeyPasswod;
-                    CAPemCertFileOrPath = string.IsNullOrWhiteSpace(CAPemCertFileOrPath) ? null : CAPemCertFileOrPath;
-                    
-                    return SSLSdk.HP_SSLServer_SetupSSLContext(pServer, VerifyMode, PemCertFile, PemKeyFile, KeyPasswod, CAPemCertFileOrPath, SNIServerNameCallback);
-                }
-
-                //return true;
+                PemCertFile = string.IsNullOrWhiteSpace(PemCertFile) ? null : PemCertFile;
+                PemKeyFile = string.IsNullOrWhiteSpace(PemKeyFile) ? null : PemKeyFile;
+                KeyPasswod = string.IsNullOrWhiteSpace(KeyPasswod) ? null : KeyPasswod;
+                CAPemCertFileOrPath = string.IsNullOrWhiteSpace(CAPemCertFileOrPath) ? null : CAPemCertFileOrPath;
+                
+                return SSLSdk.HP_SSLServer_SetupSSLContext(pServer, VerifyMode, PemCertFile, PemKeyFile, KeyPasswod, CAPemCertFileOrPath, SNIServerNameCallback);
             }
+
+            return false;
+
         }
 
         /// <summary>
@@ -130,7 +127,7 @@ namespace HPSocketCS
         /// </summary>
         public virtual void Uninitialize()
         {
-            if (Interlocked.Decrement(ref ObjectReferer) == 0 && pServer != IntPtr.Zero)
+            if (pServer != IntPtr.Zero)
             {
                 SSLSdk.HP_SSLServer_CleanupSSLContext(pServer);
             }
@@ -138,11 +135,6 @@ namespace HPSocketCS
 
         public new bool Start()
         {
-            Uninitialize();
-            if (Initialize() == false)
-            {
-                throw new Exception("初始化SSL环境失败!");
-            }
             return base.Start();
         }
 

@@ -4,17 +4,17 @@ High Performance Network Framework
 - ***Server*** Based on IOCP/EPOLL communication model, combined with technology of memory pool, private heap etc., efficient memory management is implemented to support large scale and high concurrent communication scenarios.
 - ***Agent*** The Agent component is essentially a Multi-Client component that uses the same technical architecture as the Server component. An Agent component object can create and efficiently handle large-scale Socket connections at the same time.
 - ***Client*** Based on Event-Select/POLL communication model, each component object creates a communication thread and manages a Socket connection. Client components are suitable for small-scale client scenarios.
-## Doc
-- HP-Socket Development Guide.pdf: 
-[download](https://gitee.com/ldcsaa/HP-Socket/blob/master/Doc)
-- HP-Socket Class Diagram.uml: 
-[download](https://gitee.com/ldcsaa/HP-Socket/blob/master/Doc)
-- HP-Socket Class Diagram.jpg: 
-[download](https://gitee.com/ldcsaa/HP-Socket/blob/master/Doc)
-- HP-Socket SSL Class Diagram.jpg: 
-[download](https://gitee.com/ldcsaa/HP-Socket/blob/master/Doc)
-- HP-Socket HTTP Class Diagram.jpg: 
-[download](https://gitee.com/ldcsaa/HP-Socket/blob/master/Doc)
+## Document
+- HP-Socket Development Guide 
+[[pdf]](https://github.com/ldcsaa/HP-Socket/tree/master/Doc)
+- HP-Socket Class Diagram 
+[[uml]](https://github.com/ldcsaa/HP-Socket/tree/master/Doc)
+- HP-Socket Class Diagram 
+[[jpg]](https://github.com/ldcsaa/HP-Socket/tree/master/Doc)
+- HP-Socket SSL Class Diagram 
+[[jpg]](https://github.com/ldcsaa/HP-Socket/tree/master/Doc)
+- HP-Socket HTTP Class Diagram 
+[[jpg]](https://github.com/ldcsaa/HP-Socket/tree/master/Doc)
 ## Workflow
 1. Create listener object
 2. Create component object (and binding with listener object)
@@ -62,7 +62,7 @@ int main(int argc, char* const argv[])
 	// ... ... 
 	
 	// 6. (optional) Stop component object
-	s_pserver->Stop()
+	s_pserver->Stop();
 
 	return 0;
 	
@@ -113,7 +113,7 @@ int main(int argc, char* const argv[])
 	// ... ... 
 	
 	// 6. (optional) Stop component object
-	::HP_Agent_Stop(s_agent)
+	::HP_Agent_Stop(s_agent);
 
 	// 7. Destroy component object
 	::Destroy_HP_TcpPullAgent(s_agent);
@@ -127,7 +127,7 @@ int main(int argc, char* const argv[])
 ## Component List
 - ***Basic Components***
 
-![Basic Component](https://gitee.com/uploads/images/2017/1214/143803_15f6abc9_81720.jpeg "Basic Component- mini.jpg")
+![Basic Component](https://images.gitee.com/uploads/images/2019/0331/102422_3eecfdb7_81720.jpeg "Basic Component - mini.jpg")
 
 - ***SSL Components***
 

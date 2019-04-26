@@ -88,7 +88,7 @@ public:
 
 		if(isOK)
 		{
-			isOK  = m_thHandler.Cancel();
+			isOK  = m_thHandler.Interrupt();
 			isOK &= m_thHandler.Join();
 		}
 
@@ -112,12 +112,26 @@ private:
 
 		SI si;
 
-		while(TRUE)
+		ZeroObject(si);
+
+		while(!::IsThreadInterrupted())
 		{
-			int rs = NO_EINTR_INT(sigwaitinfo(pSigSet, &si));
+#if !defined(__ANDROID__)
+			int rs = NO_EINTR_EXCEPT_THR_INTR_INT(sigwaitinfo(pSigSet, &si));
+#else
+			int rs = NO_EINTR_EXCEPT_THR_INTR_INT(sigwait(pSigSet, &si.si_signo));
+#endif
 
 			if(IS_HAS_ERROR(rs))
+			{
+				if(IS_ERROR(EINTR))
+				{
+					ASSERT(::IsThreadInterrupted());
+					break;
+				}
+				
 				ERROR_ABORT();
+			}
 
 			Run((T*)nullptr, &si);
 		}

@@ -118,7 +118,7 @@ template<class T, USHORT default_port> UINT CHttpServerT<T, default_port>::Clean
 	TRACE("---------------> Connection Cleaner Thread 0x%08X started <---------------", SELF_THREAD_ID);
 
 	pollfd pfd		 = {m_evCleaner.GetFD(), POLLIN};
-	DWORD dwInterval = max(MIN_HTTP_RELEASE_CHECK_INTERVAL, (m_dwReleaseDelay - MIN_HTTP_RELEASE_DELAY / 2));
+	DWORD dwInterval = MAX(MIN_HTTP_RELEASE_CHECK_INTERVAL, (m_dwReleaseDelay - MIN_HTTP_RELEASE_DELAY / 2));
 
 	while(HasStarted())
 	{
@@ -206,15 +206,17 @@ template<class T, USHORT default_port> void CHttpServerT<T, default_port>::Relea
 	VERIFY(m_lsDyingQueue.IsEmpty());
 }
 
+template<class T, USHORT default_port> EnHandleResult CHttpServerT<T, default_port>::FireAccept(TSocketObj* pSocketObj)
+{
+	return m_bHttpAutoStart ? __super::FireAccept(pSocketObj) : __super::DoFireAccept(pSocketObj);
+}
+
 template<class T, USHORT default_port> EnHandleResult CHttpServerT<T, default_port>::DoFireAccept(TSocketObj* pSocketObj)
 {
 	EnHandleResult result = __super::DoFireAccept(pSocketObj);
 
 	if(result != HR_ERROR)
-	{
-		THttpObj* pHttpObj = m_objPool.PickFreeHttpObj(this, pSocketObj);
-		VERIFY(SetConnectionReserved(pSocketObj, pHttpObj));
-	}
+		DoStartHttp(pSocketObj);
 
 	return result;
 }
@@ -226,10 +228,12 @@ template<class T, USHORT default_port> EnHandleResult CHttpServerT<T, default_po
 	if(result == HR_ERROR)
 	{
 		THttpObj* pHttpObj = FindHttpObj(pSocketObj);
-		VERIFY(pHttpObj);
 
-		m_objPool.PutFreeHttpObj(pHttpObj);
-		SetConnectionReserved(pSocketObj, nullptr);
+		if(pHttpObj != nullptr)
+		{
+			m_objPool.PutFreeHttpObj(pHttpObj);
+			SetConnectionReserved(pSocketObj, nullptr);
+		}
 	}
 
 	return result;
@@ -238,12 +242,16 @@ template<class T, USHORT default_port> EnHandleResult CHttpServerT<T, default_po
 template<class T, USHORT default_port> EnHandleResult CHttpServerT<T, default_port>::DoFireReceive(TSocketObj* pSocketObj, const BYTE* pData, int iLength)
 {
 	THttpObj* pHttpObj = FindHttpObj(pSocketObj);
-	ASSERT(pHttpObj);
 
-	if(pHttpObj->HasReleased())
-		return HR_ERROR;
+	if(pHttpObj == nullptr)
+		return DoFireSuperReceive(pSocketObj, pData, iLength);
+	else
+	{
+		if(pHttpObj->HasReleased())
+			return HR_ERROR;
 
-	return pHttpObj->Execute(pData, iLength);
+		return pHttpObj->Execute(pData, iLength);
+	}
 }
 
 template<class T, USHORT default_port> EnHandleResult CHttpServerT<T, default_port>::DoFireClose(TSocketObj* pSocketObj, EnSocketOperation enOperation, int iErrorCode)
@@ -494,6 +502,75 @@ template<class T, USHORT default_port> inline typename CHttpServerT<T, default_p
 	return pHttpObj;
 }
 
+template<class T, USHORT default_port> BOOL CHttpServerT<T, default_port>::StartHttp(CONNID dwConnID)
+{
+	if(IsHttpAutoStart())
+	{
+		::SetLastError(ERROR_INVALID_OPERATION);
+		return FALSE;
+	}
+
+	TSocketObj* pSocketObj = FindSocketObj(dwConnID);
+
+	if(!TSocketObj::IsValid(pSocketObj))
+	{
+		::SetLastError(ERROR_OBJECT_NOT_FOUND);
+		return FALSE;
+	}
+
+	return StartHttp(pSocketObj);
+}
+
+template<class T, USHORT default_port> BOOL CHttpServerT<T, default_port>::StartHttp(TSocketObj* pSocketObj)
+{
+	if(!pSocketObj->HasConnected())
+	{
+		::SetLastError(ERROR_INVALID_STATE);
+		return FALSE;
+	}
+
+	CReentrantCriSecLock locallock(pSocketObj->csSend);
+
+	if(!TSocketObj::IsValid(pSocketObj))
+	{
+		::SetLastError(ERROR_OBJECT_NOT_FOUND);
+		return FALSE;
+	}
+
+	if(!pSocketObj->HasConnected())
+	{
+		::SetLastError(ERROR_INVALID_STATE);
+		return FALSE;
+	}
+
+	THttpObj* pHttpObj = FindHttpObj(pSocketObj);
+
+	if(pHttpObj != nullptr)
+	{
+		::SetLastError(ERROR_ALREADY_INITIALIZED);
+		return FALSE;
+	}
+
+	DoStartHttp(pSocketObj);
+
+	if(!IsSecure())
+		FireHandShake(pSocketObj);
+	else
+	{
+#ifdef _SSL_SUPPORT
+		if(IsSSLAutoHandShake())
+			StartSSLHandShake(pSocketObj);
+#endif
+	}
+
+	return TRUE;
+}
+
+template<class T, USHORT default_port> void CHttpServerT<T, default_port>::DoStartHttp(TSocketObj* pSocketObj)
+{
+	THttpObj* pHttpObj = m_objPool.PickFreeHttpObj(this, pSocketObj);
+	VERIFY(SetConnectionReserved(pSocketObj, pHttpObj));
+}
 // ------------------------------------------------------------------------------------------------------------- //
 
 template class CHttpServerT<CTcpServer, HTTP_DEFAULT_PORT>;

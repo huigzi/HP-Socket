@@ -24,9 +24,10 @@
 #pragma once
 
 #include "HPTypeDef.h"
-#include "../Common/Src/BufferPool.h"
 
 #ifdef _SSL_SUPPORT
+
+#include "../Common/Src/BufferPool.h"
 
 #pragma warning(push)
 #pragma warning(disable: 4005)
@@ -153,7 +154,7 @@ public:
 
 public:
 	
-		/*
+	/*
 	* 名称：清理线程局部环境 SSL 资源
 	* 描述：任何一个操作 SSL 的线程，在通信结束时都需要清理线程局部环境 SSL 资源
 	*		1、主线程和 HP-Socket 工作线程在通信结束时会自动清理线程局部环境 SSL 资源。因此，一般情况下不必手工调用本方法
@@ -164,8 +165,6 @@ public:
 	* 返回值：无
 	*/
 	static void RemoveThreadLocalState(DWORD dwThreadID = 0)	{CSSLInitializer::CleanupThreadState(dwThreadID);}
-
-
 
 public:
 
@@ -187,7 +186,7 @@ private:
 
 private:
 
-	static int CALLBACK InternalServerNameCallback(SSL* ssl, int* ad, void* arg);
+	static int InternalServerNameCallback(SSL* ssl, int* ad, void* arg);
 
 private:
 
@@ -243,6 +242,12 @@ public:
 	{
 		Reset();
 	}
+
+	static CSSLSession* Construct(CItemPool& itPool)
+		{return new CSSLSession(itPool);}
+
+	static void Destruct(CSSLSession* pSession)
+		{if(pSession) delete pSession;}
 
 private:
 	CItemPool&				m_itPool;
@@ -338,7 +343,7 @@ template<class T, class S> EnHandleResult ProcessHandShake(T* pThis, S* pSocketO
 
 	while(TRUE)
 	{
-		VERIFY(pSession->ReadSendChannel());
+		ENSURE(pSession->ReadSendChannel());
 		const WSABUF& buffer = pSession->GetSendBuffer();
 
 		if(buffer.len == 0)
@@ -414,11 +419,11 @@ template<class T, class S> BOOL ProcessSend(T* pThis, S* pSocketObj, CSSLSession
 		return FALSE;
 	}
 
-	VERIFY(pSession->WriteSendChannel(pBuffers, iCount));
+	ENSURE(pSession->WriteSendChannel(pBuffers, iCount));
 
 	while(TRUE)
 	{
-		VERIFY(pSession->ReadSendChannel());
+		ENSURE(pSession->ReadSendChannel());
 		const WSABUF& buffer = pSession->GetSendBuffer();
 
 		if(buffer.len == 0)

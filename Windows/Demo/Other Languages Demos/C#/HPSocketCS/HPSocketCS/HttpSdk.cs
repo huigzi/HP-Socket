@@ -668,6 +668,17 @@ namespace HPSocketCS
         [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
         public static extern bool HP_HttpServer_Release(IntPtr pServer, IntPtr dwConnID);
 
+
+        /*
+        * 名称：启动 HTTP 通信
+        * 描述：当通信组件设置为非自动启动 HTTP 通信时，需要调用本方法启动 HTTP 通信
+        *		
+        * 返回值：	TRUE	-- 成功
+        *			FALSE	-- 失败，可通过 SYS_GetLastError() 获取失败原因
+        */
+        [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
+        public static extern bool HP_HttpServer_StartHttp(IntPtr pServer, IntPtr dwConnID);
+
         /******************************************************************************/
         /***************************** Server 属性访问方法 *****************************/
 
@@ -748,6 +759,12 @@ namespace HPSocketCS
         [DllImport(HPSOCKET_HTTP_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
         public static extern bool HP_HttpServer_GetWSMessageState(IntPtr pServer, IntPtr dwConnID, ref bool lpbFinal, ref WSReserved lpiReserved, ref WSOpcode lpiOperationCode, ref IntPtr lpszMask, ref ulong lpullBodyLen, ref ulong lpullBodyRemain);
 
+        /* 设置 HTTP 启动方式（默认：TRUE，自动启动） */
+        [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
+        public static extern void HP_HttpServer_SetHttpAutoStart(IntPtr pServer, bool bAutoStart);
+        /* 获取 HTTP 启动方式 */
+        [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
+        public static extern bool HP_HttpServer_IsHttpAutoStart(IntPtr pServer);
 
         /**************************************************************************/
         /***************************** Agent 操作方法 ******************************/
@@ -833,8 +850,18 @@ namespace HPSocketCS
         *			FALSE			-- 失败
         */
         [DllImport(HPSOCKET_HTTP_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
-        public static extern bool HP_HttpAgent_SendWSMessage(IntPtr pAgent, IntPtr dwConnID, bool bFinal, byte iReserved, byte iOperationCode, byte[] lpszMask, IntPtr pData, int iLength, ulong ullBodyLen);
+        public static extern bool HP_HttpAgent_SendWSMessage(IntPtr pAgent, IntPtr dwConnID, bool bFinal, byte iReserved, byte iOperationCode, byte[] lpszMask, byte[] pData, int iLength, ulong ullBodyLen);
 
+
+        /*
+        * 名称：启动 HTTP 通信
+        * 描述：当通信组件设置为非自动启动 HTTP 通信时，需要调用本方法启动 HTTP 通信
+        *		
+        * 返回值：	TRUE	-- 成功
+        *			FALSE	-- 失败，可通过 SYS_GetLastError() 获取失败原因
+        */
+        [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
+        public static extern bool HP_HttpAgent_StartHttp(IntPtr pAgent, IntPtr dwConnID);
 
         /******************************************************************************/
         /***************************** Agent 属性访问方法 ******************************/
@@ -908,6 +935,12 @@ namespace HPSocketCS
         [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
         public static extern bool HP_HttpAgent_GetWSMessageState(IntPtr pAgent, IntPtr dwConnID, ref bool lpbFinal, ref byte lpiReserved, ref byte lpiOperationCode, ref IntPtr lpszMask, ref ulong lpullBodyLen, ref ulong lpullBodyRemain);
 
+        /* 设置 HTTP 启动方式（默认：TRUE，自动启动） */
+        [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
+        public static extern void HP_HttpAgent_SetHttpAutoStart(IntPtr pAgent, bool bAutoStart);
+        /* 获取 HTTP 启动方式 */
+        [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
+        public static extern bool HP_HttpAgent_IsHttpAutoStart(IntPtr pAgent);
 
 
 
@@ -993,7 +1026,18 @@ namespace HPSocketCS
         *			FALSE			-- 失败
         */
         [DllImport(HPSOCKET_HTTP_DLL_PATH, CharSet = CharSet.Ansi, SetLastError = true)]
-        public static extern bool HP_HttpClient_SendWSMessage(IntPtr pClient, bool bFinal, byte iReserved, byte iOperationCode, byte[] lpszMask, IntPtr pData, int iLength, ulong ullBodyLen);
+        public static extern bool HP_HttpClient_SendWSMessage(IntPtr pClient, bool bFinal, byte iReserved, byte iOperationCode, byte[] lpszMask, byte[] pData, int iLength, ulong ullBodyLen);
+
+        /*
+        * 名称：启动 HTTP 通信
+        * 描述：当通信组件设置为非自动启动 HTTP 通信时，需要调用本方法启动 HTTP 通信
+        *		
+        * 返回值：	TRUE	-- 成功
+        *			FALSE	-- 失败，可通过 SYS_GetLastError() 获取失败原因
+        */
+        [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
+        public static extern bool HP_HttpClient_StartHttp(IntPtr pClient);
+
 
         /******************************************************************************/
         /***************************** Client 属性访问方法 *****************************/
@@ -1069,7 +1113,12 @@ namespace HPSocketCS
         [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
         public static extern bool HP_HttpClient_GetWSMessageState(IntPtr pClient, ref bool lpbFinal, ref byte lpiReserved, ref byte lpiOperationCode, ref IntPtr lpszMask, ref ulong lpullBodyLen, ref ulong lpullBodyRemain);
 
-
+        /* 设置 HTTP 启动方式（默认：TRUE，自动启动） */
+        [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
+        public static extern void HP_HttpClient_SetHttpAutoStart(IntPtr pClient, bool bAutoStart);
+        /* 获取 HTTP 启动方式 */
+        [DllImport(HPSOCKET_HTTP_DLL_PATH, SetLastError = true)]
+        public static extern bool HP_HttpClient_IsHttpAutoStart(IntPtr pClient);
         /**************************************************************************/
         /************************ HTTP Sync Client 操作方法 ************************/
         /// <summary>

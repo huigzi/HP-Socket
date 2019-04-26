@@ -41,17 +41,28 @@ public:
 	virtual void CleanupSSLContext()
 		{m_sslCtx.Cleanup();}
 
+	virtual BOOL StartSSLHandShake(CONNID dwConnID);
+
+public:
+	virtual void SetSSLAutoHandShake(BOOL bAutoHandShake)	{m_bSSLAutoHandShake = bAutoHandShake;}
+	virtual BOOL IsSSLAutoHandShake	()						{return m_bSSLAutoHandShake;}
+
 protected:
 	virtual EnHandleResult FireConnect(TAgentSocketObj* pSocketObj);
 	virtual EnHandleResult FireReceive(TAgentSocketObj* pSocketObj, const BYTE* pData, int iLength);
 	virtual EnHandleResult FireClose(TAgentSocketObj* pSocketObj, EnSocketOperation enOperation, int iErrorCode);
-	virtual EnHandleResult FireShutdown();
 
 	virtual BOOL CheckParams();
 	virtual void PrepareStart();
 	virtual void Reset();
 
 	virtual void OnWorkerThreadEnd(DWORD dwThreadID);
+
+protected:
+	virtual BOOL StartSSLHandShake(TAgentSocketObj* pSocketObj);
+
+private:
+	void DoSSLHandShake(TAgentSocketObj* pSocketObj);
 
 private:
 	friend EnHandleResult ProcessHandShake<>(CSSLAgent* pThis, TAgentSocketObj* pSocketObj, CSSLSession* pSession);
@@ -62,16 +73,19 @@ public:
 	CSSLAgent(ITcpAgentListener* pListener)
 	: CTcpAgent(pListener)
 	, m_sslPool(m_sslCtx)
+	, m_bSSLAutoHandShake(TRUE)
 	{
 
 	}
 
 	virtual ~CSSLAgent()
 	{
-		Stop();
+		ENSURE_STOP();
 	}
 
 private:
+	BOOL m_bSSLAutoHandShake;
+
 	CSSLContext m_sslCtx;
 	CSSLSessionPool m_sslPool;
 };

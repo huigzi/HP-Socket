@@ -140,8 +140,8 @@ private:
 	DECLARE_NO_COPY_CLASS(CReentrantSpinGuard)
 
 private:
-	atomic_ulong m_atThreadID;
-	int			 m_iCount;
+	atomic_tid	m_atThreadID;
+	int			m_iCount;
 };
 
 class CFakeGuard
@@ -161,22 +161,52 @@ private:
 	CLockObj& m_lock;
 };
 
-using CSpinLock				= CLocalLock<CSpinGuard>;
-using CReentrantSpinLock	= CLocalLock<CReentrantSpinGuard>;
-using CFakeLock				= CLocalLock<CFakeGuard>;
+template<class CLockObj> class CLocalTryLock
+{
+public:
+	CLocalTryLock(CLockObj& obj) : m_lock(obj) {m_bValid = m_lock.TryLock();}
+	~CLocalTryLock() {if(m_bValid) m_lock.Unlock();}
 
-using CCriSec				= mutex;
-using CCriSecLock			= lock_guard<mutex>;
-using CCriSecLock2			= unique_lock<mutex>;
+	BOOL IsValid() {return m_bValid;}
 
-using CReentrantCriSec		= recursive_mutex;
-using CReentrantCriSecLock	= lock_guard<recursive_mutex>;
-using CReentrantCriSecLock2	= unique_lock<recursive_mutex>;
+private:
+	CLockObj&	m_lock;
+	BOOL		m_bValid;
+};
 
-using CMTX					= mutex;
-using CMutexLock			= lock_guard<mutex>;
-using CMutexLock2			= unique_lock<mutex>;
+template<class CMTXObj> class CMTXTryLock
+{
+public:
+	CMTXTryLock(CMTXObj& obj) : m_lock(obj) {m_bValid = m_lock.try_lock();}
+	~CMTXTryLock() {if(m_bValid) m_lock.unlock();}
 
-using CReentrantMTX			= recursive_mutex;
-using CReentrantMutexLock	= lock_guard<recursive_mutex>;
-using CReentrantMutexLock2	= unique_lock<recursive_mutex>;
+	BOOL IsValid() {return m_bValid;}
+
+private:
+	CMTXObj&	m_lock;
+	BOOL		m_bValid;
+};
+
+using CSpinLock					= CLocalLock<CSpinGuard>;
+using CReentrantSpinLock		= CLocalLock<CReentrantSpinGuard>;
+using CFakeLock					= CLocalLock<CFakeGuard>;
+
+using CCriSec					= mutex;
+using CCriSecLock				= lock_guard<mutex>;
+using CCriSecLock2				= unique_lock<mutex>;
+using CCriSecTryLock			= CMTXTryLock<mutex>;
+
+using CMTX						= CCriSec;
+using CMutexLock				= CCriSecLock;
+using CMutexLock2				= CCriSecLock2;
+using CMutexTryLock				= CCriSecTryLock;
+
+using CReentrantCriSec			= recursive_mutex;
+using CReentrantCriSecLock		= lock_guard<recursive_mutex>;
+using CReentrantCriSecLock2		= unique_lock<recursive_mutex>;
+using CReentrantCriSecTryLock	= CMTXTryLock<recursive_mutex>;
+
+using CReentrantMTX				= CReentrantCriSec;
+using CReentrantMutexLock		= CReentrantCriSecLock;
+using CReentrantMutexLock2		= CReentrantCriSecLock2;
+using CReentrantMutexTryLock	= CReentrantCriSecTryLock;

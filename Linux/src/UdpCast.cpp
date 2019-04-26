@@ -23,8 +23,12 @@
  
 #include "UdpCast.h"
 
-BOOL CUdpCast::Start(LPCTSTR lpszRemoteAddress, USHORT usPort, BOOL bAsyncConnect, LPCTSTR lpszBindAddress)
+#ifdef _UDP_SUPPORT
+
+BOOL CUdpCast::Start(LPCTSTR lpszRemoteAddress, USHORT usPort, BOOL bAsyncConnect, LPCTSTR lpszBindAddress, USHORT usLocalPort)
 {
+	ASSERT(usLocalPort == 0);
+
 	if(!CheckParams() || !CheckStarting())
 		return FALSE;
 
@@ -72,11 +76,11 @@ BOOL CUdpCast::Start(LPCTSTR lpszRemoteAddress, USHORT usPort, BOOL bAsyncConnec
 
 BOOL CUdpCast::CheckParams()
 {
-	if	(((int)m_dwMaxDatagramSize > 0)									&&
-		((int)m_dwFreeBufferPoolSize >= 0)								&&
-		((int)m_dwFreeBufferPoolHold >= 0)								&&
-		(m_enCastMode >= CM_MULTICAST && m_enCastMode <= CM_BROADCAST)	&&
-		(m_iMCTtl >= 0 && m_iMCTtl <= 255)								)
+	if	(((int)m_dwMaxDatagramSize > 0 && m_dwMaxDatagramSize <= MAXIMUM_UDP_MAX_DATAGRAM_SIZE)	&&
+		((int)m_dwFreeBufferPoolSize >= 0)														&&
+		((int)m_dwFreeBufferPoolHold >= 0)														&&
+		(m_enCastMode >= CM_MULTICAST && m_enCastMode <= CM_BROADCAST)							&&
+		(m_iMCTtl >= 0 && m_iMCTtl <= 255)														)
 		return TRUE;
 
 	SetLastError(SE_INVALID_PARAM, __FUNCTION__, ERROR_INVALID_PARAMETER);
@@ -100,7 +104,7 @@ BOOL CUdpCast::CheckStarting()
 		m_enState = SS_STARTING;
 	else
 	{
-		SetLastError(SE_ILLEGAL_STATE, __FUNCTION__, ERROR_INVALID_OPERATION);
+		SetLastError(SE_ILLEGAL_STATE, __FUNCTION__, ERROR_INVALID_STATE);
 		return FALSE;
 	}
 
@@ -122,11 +126,11 @@ BOOL CUdpCast::CheckStoping()
 		if(!m_thWorker.IsInMyThread())
 		{
 			while(m_enState != SS_STOPPED)
-				::Sleep(30);
+				::WaitFor(10);
 		}
 	}
 
-	SetLastError(SE_ILLEGAL_STATE, __FUNCTION__, ERROR_INVALID_OPERATION);
+	SetLastError(SE_ILLEGAL_STATE, __FUNCTION__, ERROR_INVALID_STATE);
 
 	return FALSE;
 }
@@ -274,6 +278,8 @@ BOOL CUdpCast::Stop()
 	if(!CheckStoping())
 		return FALSE;
 
+	SetConnected(FALSE);
+
 	WaitForWorkerThreadEnd();
 
 	if(m_ccContext.bFireOnClose)
@@ -321,7 +327,6 @@ void CUdpCast::Reset()
 	m_nRecvEvents	= 0;
 	m_nSendEvents	= 0;
 	m_bPaused		= FALSE;
-	m_bConnected	= FALSE;
 	m_enState		= SS_STOPPED;
 }
 
@@ -331,7 +336,7 @@ void CUdpCast::WaitForWorkerThreadEnd()
 		return;
 
 	if(m_thWorker.IsInMyThread())
-		m_thWorker.Detatch();
+		m_thWorker.Detach();
 	else
 	{
 		m_evStop.Set();
@@ -348,13 +353,15 @@ UINT WINAPI CUdpCast::WorkerThreadProc(LPVOID pv)
 {
 	TRACE("---------------> Cast Worker Thread 0x%08X started <---------------", SELF_THREAD_ID);
 
+	OnWorkerThreadStart(SELF_THREAD_ID);
+
 	BOOL bCallStop	= TRUE;
 	pollfd pfds[]	= {	{m_soRecv, m_nRecvEvents},
 						{m_soSend, m_nSendEvents},
 						{m_evSend.GetFD(), POLLIN},
 						{m_evRecv.GetFD(), POLLIN},
 						{m_evStop.GetFD(), POLLIN}	};
-	int size		= (int)(sizeof(pfds) / sizeof(pfds[0]));
+	int size		= ARRAY_SIZE(pfds);
 
 	m_rcBuffer.Malloc(m_dwMaxDatagramSize);
 
@@ -427,7 +434,7 @@ EXIT_WORKER_THREAD:
 
 BOOL CUdpCast::ProcessNetworkEvent(SHORT events)
 {
-	ASSERT(HasConnected());
+	ASSERT(IsConnected());
 
 	BOOL bContinue = TRUE;
 
@@ -476,17 +483,23 @@ BOOL CUdpCast::ReadData()
 {
 	while(TRUE)
 	{
-		DWORD addrLen	= (DWORD)m_remoteAddr.AddrSize();
-		int rc			= (int)recvfrom(m_soRecv, (char*)(BYTE*)m_rcBuffer, m_dwMaxDatagramSize, MSG_TRUNC, m_remoteAddr.Addr(), &addrLen);
+		if(m_bPaused)
+			break;
+
+		socklen_t addrLen = (socklen_t)m_remoteAddr.AddrSize();
+		int rc			  = (int)recvfrom(m_soRecv, (char*)(BYTE*)m_rcBuffer, m_dwMaxDatagramSize, MSG_TRUNC, m_remoteAddr.Addr(), &addrLen);
 
 		if(rc >= 0)
 		{
 			if(rc > (int)m_dwMaxDatagramSize)
-				continue;
+			{
+				m_ccContext.Reset(TRUE, SO_RECEIVE, ERROR_BAD_LENGTH);
+				return FALSE;
+			}
 
 			if(TRIGGER(FireReceive(m_rcBuffer, rc)) == HR_ERROR)
 			{
-				TRACE("<C-CNNID: %Iu> OnReceive() event return 'HR_ERROR', connection will be closed !", m_dwConnID);
+				TRACE("<C-CNNID: %zu> OnReceive() event return 'HR_ERROR', connection will be closed !", m_dwConnID);
 
 				m_ccContext.Reset(TRUE, SO_RECEIVE, ENSURE_ERROR_CANCELLED);
 				return FALSE;
@@ -513,7 +526,7 @@ BOOL CUdpCast::ReadData()
 
 BOOL CUdpCast::PauseReceive(BOOL bPause)
 {
-	if(!HasConnected())
+	if(!IsConnected())
 	{
 		::SetLastError(ERROR_INVALID_STATE);
 		return FALSE;
@@ -576,7 +589,7 @@ BOOL CUdpCast::DoSendData(TItem* pItem)
 
 		if(TRIGGER(FireSend(pItem->Ptr(), rc)) == HR_ERROR)
 		{
-			TRACE("<C-CNNID: %Iu> OnSend() event should not return 'HR_ERROR' !!", m_dwConnID);
+			TRACE("<C-CNNID: %zu> OnSend() event should not return 'HR_ERROR' !!", m_dwConnID);
 			ASSERT(FALSE);
 		}
 
@@ -606,7 +619,7 @@ BOOL CUdpCast::Send(const BYTE* pBuffer, int iLength, int iOffset)
 
 	if(pBuffer && iLength > 0 && iLength <= (int)m_dwMaxDatagramSize)
 	{
-		if(HasConnected())
+		if(IsConnected())
 		{
 			if(iOffset != 0) pBuffer += iOffset;
 
@@ -633,13 +646,12 @@ BOOL CUdpCast::SendPackets(const WSABUF pBuffers[], int iCount)
 
 	if(!pBuffers || iCount <= 0)
 		return ERROR_INVALID_PARAMETER;
-	if(!HasConnected())
+	if(!IsConnected())
 		return ERROR_INVALID_STATE;
 
-	int result = NO_ERROR;
-
-	int iLength = 0;
-	int iMaxLen = (int)m_dwMaxDatagramSize;
+	int result	= NO_ERROR;
+	int iLength	= 0;
+	int iMaxLen	= (int)m_dwMaxDatagramSize;
 
 	TItemPtr itPtr(m_itPool, m_itPool.PickFreeItem());
 
@@ -676,7 +688,7 @@ int CUdpCast::SendInternal(TItemPtr& itPtr)
 {
 	CCriSecLock locallock(m_csSend);
 
-	if(!HasConnected())
+	if(!IsConnected())
 		return ERROR_INVALID_STATE;
 
 	BOOL isPending = !m_lsSend.IsEmpty();
@@ -741,3 +753,5 @@ BOOL CUdpCast::GetRemoteHost(LPCSTR* lpszHost, USHORT* pusPort)
 
 	return !m_strHost.IsEmpty();
 }
+
+#endif
